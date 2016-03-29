@@ -8,11 +8,11 @@
 (require 's)
 (require 'f)
 
-(defconst org-directory
-  (let ((in-dropbox (f-join user-dropbox-directory "org/")))
-    (if (f-exists? in-dropbox) in-dropbox "~/org/")))
+(defconst org-directory "~/org/")
 
-(defvar cb-org-work-file (f-join org-directory "work.org")
+(defconst org-agenda-directory (f-join org-directory "agenda/")
+  "Give agenda files a dedicated location undr org-directory")
+(defvar cb-org-work-file (f-join org-agenda-directory "/work.org")
   "Defines the path to file for work-related todos, etc.")
 
 (defconst cb-org-packages
@@ -73,7 +73,11 @@
   (add-hook 'org-mode-hook #'auto-revert-mode)
   (add-hook 'org-mode-hook #'abbrev-mode)
 
-  (setq org-default-notes-file (f-join org-directory "notes.org"))
+  (setq my-org-todo-file "~/org/agenda/todo.org")
+  (setq my-org-refile-file "~/org/agenda/refile.org")
+  (setq my-org-habit-file (f-join org-agenda-directory "enjoy.org"))
+
+  (setq org-default-notes-file (f-join org-agenda-directory "refile.org"))
   (setq org-M-RET-may-split-line nil)
   (setq org-attach-directory (f-join org-directory "data"))
   (setq org-catch-invisible-edits 'smart)
@@ -93,7 +97,7 @@
   (setq org-pretty-entities t)
   (setq org-refile-allow-creating-parent-nodes 'confirm)
   (setq org-refile-target-verify-function (lambda () (not (member (nth 2 (org-heading-components)) org-done-keywords))))
-  (setq org-refile-targets '((nil :maxlevel . 9) (org-agenda-files :maxlevel . 9)))
+  (setq org-refile-targets '((nil :maxlevel . 5) (org-agenda-files :maxlevel . 5)))
   (setq org-refile-use-outline-path t)
   (setq org-return-follows-link t)
   (setq org-reverse-note-order nil)
@@ -105,9 +109,9 @@
   (setq org-checkbox-hierarchical-statistics t)
   (setq org-log-repeat nil)
 
-  (setq org-todo-keywords '((type "MAYBE(m)" "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "CANCELLED(c@)")
-                            (type "PROJECT(p)" "|")
-                            (type "SOMEDAY(S)" "|")))
+  ;; (setq org-todo-keywords '((type "MAYBE(m)" "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "CANCELLED(c@)")
+  ;;                           (type "PROJECT(p)" "|")
+  ;;                           (type "SOMEDAY(S)" "|")))
 
   ;; Faces
 
@@ -130,15 +134,57 @@
      ((((background light)) :background nil)
       (((background dark))  :background nil))))
 
+  ;; (setq org-todo-keyword-faces
+  ;;       `(("NEXT" . ,solarized-hl-orange)
+  ;;         ("ORGANISE_IN" . ,solarized-hl-orange)
+  ;;         ("ORGANISE_OUT" . ,solarized-hl-orange)
+  ;;         ("TODO_OUT" . ,solarized-hl-orange)
+  ;;         ("READY" . ,solarized-hl-blue)
+  ;;         ("ON-HOL" . ,solarized-hl-magenta)
+  ;;         ("OPEN" . font-lock-comment-face)
+  ;;         ("WAITING" . ,solarized-hl-magenta)))
+
+  ;; Config file name for diary
+  ;; (setq diary-file "~/org/agenda/diary.org")
+
+  (setq org-tag-alist '(
+                        (:startgroup . nil)
+                        ("@work" . ?w) ("@home" . ?h)
+                        ("@break" . ?b)
+                        (:endgroup . nil)
+                        ("GAP" . ?g)
+                        ("QUANTRONG" . ?t)
+                        ("goals" . ?a)
+                        ("HOME" . ?e)
+                        ("WORK" . ?r)
+                        )
+        )
+  (setq org-tag-faces
+        (quote (("GAP" :foreground "red" :weight bold)
+                ("QUANTRONG" :foreground "blue" :weight bold)
+                ("HOME" :foreground "forest green" :weight bold)
+                ("WORK" :foreground "orange" :weight bold)
+                ("CHOI" :foreground "magenta" :weight bold)
+                ("CANCELLED" :foreground "forest green" :weight bold)
+                ("MEETING" :foreground "forest green" :weight bold)
+                ("PHONE" :foreground "forest green" :weight bold))))
+
+  (setq org-todo-keywords
+        (quote ((sequence "TODO(t)" "NEXT(n)" "SOMEDAY(s)" "|" "PROJECT(r)" "DONE(d)")
+                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)" "PHONE(p)" "MEETING(m)"))))
+
   (setq org-todo-keyword-faces
-        `(("NEXT" . ,solarized-hl-orange)
-          ("ORGANISE_IN" . ,solarized-hl-orange)
-          ("ORGANISE_OUT" . ,solarized-hl-orange)
-          ("TODO_OUT" . ,solarized-hl-orange)
-          ("READY" . ,solarized-hl-blue)
-          ("ON-HOL" . ,solarized-hl-magenta)
-          ("OPEN" . font-lock-comment-face)
-          ("WAITING" . ,solarized-hl-magenta)))
+        (quote (("TODO" :foreground "red" :weight bold)
+                ("NEXT" :foreground "blue" :weight bold)
+                ("SOMEDAY" . ,solarized-hl-magenta)
+                ("PROJECT" . ,solarized-hl-magenta)
+                ("DONE" :foreground "forest green" :weight bold)
+                ("WAITING" :foreground "orange" :weight bold)
+                ("HOLD" :foreground "magenta" :weight bold)
+                ("CANCELLED" :foreground "forest green" :weight bold)
+                ("MEETING" :foreground "forest green" :weight bold)
+                ("PHONE" :foreground "forest green" :weight bold))))
+
 
   ;; Override themes which set weird headline properties.
 
@@ -333,8 +379,8 @@ Do not scheduled items or repeating todos."
     (setq org-agenda-include-diary nil)
     (setq org-agenda-start-on-weekday nil)
     (setq org-agenda-auto-exclude-function 'cb-org/exclude-tasks-on-hold)
-    (setq org-agenda-files (f-files org-directory (lambda (f) (f-ext? f "org"))))
-    (setq org-agenda-diary-file (f-join org-directory "diary.org"))
+    (setq org-agenda-files (f-files org-agenda-directory (lambda (f) (f-ext? f "org"))))
+    (setq org-agenda-diary-file (f-join org-directory "agenda/diary.org"))
     (setq org-agenda-hide-tags-regexp (rx (or "noexport" "someday")))
     (setq org-agenda-insert-diary-extract-time t)
     (setq org-agenda-span 'week)
@@ -364,6 +410,7 @@ Do not scheduled items or repeating todos."
                 :minutes ":%02d" :require-minutes t))
 
     (setq org-agenda-custom-commands
+          ;; Useful reading: http://orgmode.org/manual/Matching-tags-and-properties.html
           '(("A" "Agenda and next actions"
              ((tags-todo "-study-someday-media/NEXT"
                          ((org-agenda-overriding-header "Next Actions")))
@@ -372,7 +419,7 @@ Do not scheduled items or repeating todos."
                     ((org-agenda-overriding-header "Waiting")))
               (stuck "")
               (tags-todo "media|study/NEXT"
-                         ((org-agenda-overriding-header "Media & Study"))))
+                         ((org-agenda-overriding-header "MEDIA & Study"))))
              ((org-agenda-tag-filter-preset '( "-ignore"))))
 
             ("n" "Next actions"
@@ -705,72 +752,116 @@ exported file's name. The PDF will be created at DEST."
              (title (cb-org/parse-html-title (cb-org/url-retrieve-html url))))
         (format "* [[%s][%s]]" url (or title url))))
 
+    ;; Capture templates for: TODO tasks, Notes, appointments, phone calls, meetings, and org-protocol
+    ;; Useful reading http://orgmode.org/manual/Template-expansion.html#Template-expansion
     (setq org-capture-templates
           `(
+            ("e" "respond" entry (file 'my-org-todo-file)
+             "* NEXT Respond to %:from on %:subject\nSCHEDULED: %t\n%U\n%a\n"
+             :clock-in t
+             :clock-resume t
+             :immediate-finish t)
+
             ("t" "Todo" entry
              (file+olp org-default-notes-file "Tasks")
              "* TODO %?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
             ("T" "Todo (work)" entry
              (file+olp cb-org-work-file "Tasks")
              "* TODO %?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
 
             ("n" "Next Action" entry
              (file+olp org-default-notes-file "Tasks")
              "* NEXT %?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
             ("N" "Next Action (work)" entry
              (file+olp cb-org-work-file "Tasks")
              "* NEXT %?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
 
             ("d" "Diary" entry
              (file+datetree org-agenda-diary-file)
              "* %?\n%^t"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
             ("D" "Diary (work)" entry
              (file+datetree cb-org-work-file)
              "* %?\n%^t"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
+
+            ("g" "Meeting" entry (file 'my-org-todo-file)
+             "* MEETING with %? :MEETING:\n%U" :clock-in t :clock-resume t)
+
+            ("h" "Habit activities, leizure" entry (file 'my-org-habit-file)
+             "* NEXT %?\n%U\n%a\nSCHEDULED: %(format-time-string \"%<<%Y-%m-%d %a .+1d/3d>>\")\n:PROPERTIES:\n:STYLE: habit\n:REPEAT_TO_STATE: NEXT\n:END:\n")
 
             ("l" "Link" entry
              (file+olp org-default-notes-file "Links")
              (function cb-org/read-url-for-capture)
              :immediate-finish t
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
             ("L" "Link (work)" entry
              (file+olp cb-org-work-file "Links")
              (function cb-org/read-url-for-capture)
              :immediate-finish t
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
+
+            ("o" "note" entry
+             (file+olp "~/org/agenda/refile.org" "Notes")
+             "* %? :NOTE:\n%U\n%a\n"
+             :clock-in t
+             :clock-resume t)
 
             ("s" "Someday" entry
              (file+olp org-default-notes-file "Someday")
              "* SOMEDAY %?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
 
             ("m" "Listening" entry
-             (file+olp org-default-notes-file "Media" "Listening")
+             (file+olp org-default-notes-file "MEDIA" "Listening")
              "* MAYBE Listen to %i%?"
-             :clock-keep t)
+             :clock-in t
+             :clock-resume t)
+
+            ("p" "Phone call" entry
+             (file 'my-org-todo-file "Phone")
+             "* PHONE %? :PHONE:\n%U"
+             :clock-in t
+             :clock-resume t)
 
             ("v" "Viewing" entry
-             (file+olp org-default-notes-file "Media" "Viewing")
-             "* MAYBE Watch %i%?"
-             :clock-keep t)
+             (file+olp org-default-notes-file "MEDIA" "Viewing")
+             "* MAYBE Watch %i%? :Viewing:\n%U"
+             :clock-in t
+             :clock-resume t)
 
             ("r" "Reading" entry
-             (file+olp org-default-notes-file "Media" "Reading")
-             "* MAYBE Read %i%?"
-             :clock-keep t)
+             (file+olp org-default-notes-file "MEDIA" "Reading")
+             "* MAYBE Read %i%? :Reading:\n%U"
+             :clock-in t
+             :clock-resume t)
 
-            ))))
+            ("w" "bionformatics" entry
+             (file+olp "~/org/bioinformatics.org" "Notes")
+             "* TODO Review %c\n%U\n"
+             :clock-in t
+             :clock-resume t)
+            ))
+    ))
 
 ;;; packages.el ends here
