@@ -83,7 +83,7 @@
     (add-to-list 'exec-path dir)))
 
 (defun cb-bootstrap/user-config ()
-  (setq custom-file (concat user-emacs-directory "custom.el"))
+  (setq custom-file (concat user-emacs-directory "private/custom.el"))
   (when (file-exists-p custom-file)
     (load custom-file))
   (with-demoted-errors "Personal config: %S"

@@ -104,7 +104,7 @@
   "Show the agenda fullscreen."
   (interactive)
   (org-agenda current-prefix-arg "A")
-  (delete-other-windows))
+  )
 
 
 ;;; Diary utils
