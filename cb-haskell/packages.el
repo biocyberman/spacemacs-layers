@@ -7,9 +7,10 @@
   (require 'use-package nil t)
   (require 'noflet nil t))
 
+(autoload 'cb-buffers-maybe-kill "cb-buffers")
+
 (defconst cb-haskell-packages
-  '(
-    haskell-mode
+  '(haskell-mode
     shm
     hindent
     ghc
@@ -19,6 +20,7 @@
     aggressive-indent
     llvm-mode
     cb-buffers
+    indent-dwim
 
     (ghc-dump :location local)
     (haskell-ctrl-c-ctrl-c :location local)
@@ -30,7 +32,9 @@
     (haskell-pragmas :location local)
     (haskell-ret :location local)
     (haskell-unicode :location local)
-    (haskell-snippets :excluded t)))
+    (haskell-snippets :excluded t)
+    (haskell-smart-commands :location local)
+    (haskell-autoinsert :location local)))
 
 (defun cb-haskell/init-llvm-mode ()
   (use-package llvm-mode))
@@ -49,8 +53,9 @@
     (defun cb-haskell/update-flycheck-ghc-language-extensions ()
       (when (derived-mode-p 'haskell-mode)
         (let ((exts (haskell-pragmas-in-file)))
-          (setq-local flycheck-ghc-language-extensions exts)
-          (setq-local flycheck-hlint-language-extensions exts))))
+          (with-no-warnings
+            (setq-local flycheck-ghc-language-extensions exts)
+            (setq-local flycheck-hlint-language-extensions exts)))))
 
     (add-hook 'haskell-mode-hook #'cb-haskell/update-flycheck-ghc-language-extensions)
     (add-hook 'after-save-hook #'cb-haskell/update-flycheck-ghc-language-extensions)
@@ -122,36 +127,34 @@
     (when (require 'ghc nil t)
       (define-key haskell-mode-map (kbd "C-c C-s") #'ghc-case-split))
 
-    (evil-define-key 'insert haskell-mode-map (kbd "<backspace>") #'haskell/backspace)
-    (evil-define-key 'normal haskell-mode-map (kbd "<backspace>") nil)
     (evil-define-key 'normal haskell-mode-map (kbd "<backtab>") #'haskell-indentation-indent-backwards)
     (evil-define-key 'normal haskell-mode-map (kbd "TAB") #'haskell-indentation-indent-line)
-    (define-key haskell-mode-map (kbd "<backtab>") #'haskell-indentation-indent-backwards)
-    (define-key haskell-mode-map (kbd "TAB") #'haskell-indentation-indent-line)
 
-    (define-key haskell-mode-map (kbd "M-,")          #'pop-tag-mark)
-    (define-key haskell-mode-map (kbd "M-P")          #'flymake-goto-prev-error)
-    (define-key haskell-mode-map (kbd "M-N")          #'flymake-goto-next-error)
-    (define-key haskell-mode-map (kbd "C-,")          #'haskell-move-nested-left)
-    (define-key haskell-mode-map (kbd "C-.")          #'haskell-move-nested-right)
-    (define-key haskell-mode-map (kbd "C-c C-d")      #'haskell-w3m-open-haddock)
-    (define-key haskell-mode-map (kbd "C-c C-f")      #'haskell-cabal-visit-file)
-    (define-key haskell-mode-map (kbd "C-c C-h")      #'haskell-hoogle)
-    (define-key haskell-mode-map (kbd "C-c C-k")      #'haskell-interactive-mode-clear)
-    (define-key haskell-mode-map (kbd "<backspace>")  #'haskell/backspace)
-    (define-key haskell-mode-map (kbd "C-c i") 'shm-reformat-decl))
+    (define-key haskell-mode-map (kbd "<backtab>") #'haskell-indentation-indent-backwards)
+    (define-key haskell-mode-map (kbd "TAB")       #'haskell-indentation-indent-line)
+    (define-key haskell-mode-map (kbd "M-,")       #'pop-tag-mark)
+    (define-key haskell-mode-map (kbd "M-P")       #'flymake-goto-prev-error)
+    (define-key haskell-mode-map (kbd "M-N")       #'flymake-goto-next-error)
+    (define-key haskell-mode-map (kbd "C-,")       #'haskell-move-nested-left)
+    (define-key haskell-mode-map (kbd "C-.")       #'haskell-move-nested-right)
+    (define-key haskell-mode-map (kbd "C-c C-d")   #'haskell-w3m-open-haddock)
+    (define-key haskell-mode-map (kbd "C-c C-f")   #'haskell-cabal-visit-file)
+    (define-key haskell-mode-map (kbd "C-c C-h")   #'haskell-hoogle)
+    (define-key haskell-mode-map (kbd "C-c i")     #'shm-reformat-decl))
+
+  (with-eval-after-load 'haskell
+    (let ((map (with-no-warnings interactive-haskell-mode-map)))
+      (define-key map (kbd "C-c C-k") #'haskell-interactive-mode-clear)
+      (evil-define-key 'normal map (kbd "<return>") #'haskell-process-do-info)
+      (evil-define-key 'normal map (kbd "M-.") #'haskell-mode-goto-loc)
+      (evil-define-key 'normal map (kbd ",t") #'haskell-mode-show-type-at)))
 
   (with-eval-after-load 'haskell-presentation-mode
-    (evil-define-key 'normal haskell-presentation-mode-map (kbd "q") #'quit-window))
+    (evil-define-key 'normal (with-no-warnings haskell-presentation-mode-map) (kbd "q") #'quit-window))
 
   (with-eval-after-load 'haskell-interactive-mode
-    (define-key haskell-interactive-mode-map (kbd "C-c C-h") #'haskell-hoogle)
-    (evil-define-key 'normal haskell-error-mode-map (kbd "q") #'quit-window)
-    (evil-define-key 'normal haskell-mode-map (kbd "<return>") #'haskell-process-do-info)
-    (evil-define-key 'insert haskell-interactive-mode-map (kbd "SPC") #'haskell/interactive-smart-space)
-    (evil-define-key 'insert haskell-interactive-mode-map (kbd "<backspace>") #'haskell/backspace)
-    (evil-define-key 'normal interactive-haskell-mode-map (kbd "M-.") #'haskell-mode-goto-loc)
-    (evil-define-key 'normal interactive-haskell-mode-map (kbd ",t") #'haskell-mode-show-type-at))
+    (define-key (with-no-warnings haskell-interactive-mode-map) (kbd "C-c C-h") #'haskell-hoogle)
+    (evil-define-key 'normal (with-no-warnings haskell-error-mode-map) (kbd "q") #'quit-window))
 
   (with-eval-after-load 'haskell-cabal-mode
     (define-key haskell-cabal-mode-map (kbd "C-c C-k") #'haskell-interactive-mode-clear)))
@@ -159,8 +162,8 @@
 (defun cb-haskell/post-init-shm ()
   (setq shm-auto-insert-skeletons nil)
 
-  (core/remap-face 'shm-current-face 'core/bg-hl-ok)
-  (core/remap-face 'shm-quarantine-face 'core/bg-hl-red)
+  (core/remap-face 'shm-current-face 'cb-faces-bg-hl-ok)
+  (core/remap-face 'shm-quarantine-face 'cb-faces-bg-hl-red)
 
   ;; Disable most shm bindings
   (defconst shm-repl-map (make-sparse-keymap))
@@ -169,8 +172,7 @@
   (defun cb-haskell/configure-shm ()
     (require 'shm)
     (evil-define-key 'insert shm-map (kbd "<return>") 'haskell/ret)
-    (define-key shm-map (kbd "C-<return>") 'shm/newline-indent)
-    (define-key shm-map (kbd "SPC") 'haskell/smart-space))
+    (define-key shm-map (kbd "C-<return>") 'shm/newline-indent))
 
   (add-hook 'haskell-mode-hook #'cb-haskell/configure-shm)
 
@@ -243,23 +245,26 @@
         (advice-add fn :around #'cb-haskell/hacky-sp-preserve-indent-level)))))
 
 (defun cb-haskell/post-init-smart-ops ()
+
   (defun cb-haskell/reformat-comment-at-point ()
-    (-when-let* (((&plist :beg beg :end end :op op) (sp-get-enclosing-sexp))
-                 (_ (equal op "{"))
-                 (_ (s-matches? (rx bos "{" (* (any "-" space)) "}" eos)
-                                (buffer-substring beg end))))
-      (goto-char beg)
-      (delete-region beg end)
-      (insert "{- ") (save-excursion (insert " -}"))))
+    (-when-let ((&plist :beg beg :end end :op op) (sp-get-enclosing-sexp))
+      (when (and (equal op "{")
+                 (s-matches? (rx bos "{" (* (any "-" space)) "}" eos)
+                             (buffer-substring beg end)))
+        (goto-char beg)
+        (delete-region beg end)
+        (insert "{- ")
+        (save-excursion (insert " -}")))))
 
   (defun cb-haskell/reformat-pragma-at-point ()
-    (-when-let* (((&plist :beg beg :end end :op op) (sp-get-enclosing-sexp))
-                 (_ (equal op "{"))
-                 (_ (s-matches? (rx bos "{" (* (any "-" space "#")) "}" eos)
-                                (buffer-substring beg end))))
-      (goto-char beg)
-      (delete-region beg end)
-      (insert "{-# ") (save-excursion (insert " #-}"))))
+    (-when-let ((&plist :beg beg :end end :op op) (sp-get-enclosing-sexp))
+      (when (and (equal op "{")
+                 (s-matches? (rx bos "{" (* (any "-" space "#")) "}" eos)
+                             (buffer-substring beg end)))
+        (goto-char beg)
+        (delete-region beg end)
+        (insert "{-# ")
+        (save-excursion (insert " #-}")))))
 
   (defun cb-haskell/indent-if-in-exports ()
     (when (ignore-errors (s-matches? "ExportSpec" (elt (shm-current-node) 0)))
@@ -297,42 +302,48 @@
 
 (defun cb-haskell/post-init-aggressive-indent ()
   (with-eval-after-load 'aggressive-indent
-    (add-to-list 'aggressive-indent-excluded-modes 'haskell-interactive-mode)))
+    (with-no-warnings
+      (add-to-list 'aggressive-indent-excluded-modes 'haskell-interactive-mode))))
 
-(defun cb-haskell/post-init-cb-buffers ()
-  (use-package cb-buffers
+(defun cb-haskell/post-init-indent-dwim ()
+  (use-package indent-dwim
     :config
-    (add-to-list 'cb-buffers-indent-commands-alist '(haskell-mode . haskell/format-dwim))))
+    (progn
+      (autoload 'haskell-unicode-apply-to-buffer "haskell-unicode")
+
+      (defun haskell/format-dwim ()
+        "Reformat the buffer."
+        (interactive "*")
+        (hindent/reformat-decl)
+        (haskell-mode-stylish-buffer)
+        (haskell-unicode-apply-to-buffer))
+
+      (add-to-list 'indent-dwim-commands-alist '(haskell-mode . haskell/format-dwim)))))
 
 (defun cb-haskell/init-haskell-ctrl-c-ctrl-c ()
   (use-package haskell-ctrl-c-ctrl-c
-    :commands haskell-ctrl-c-ctrl-c-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-ctrl-c-ctrl-c-init)))
+    :functions (haskell-ctrl-c-ctrl-c-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-ctrl-c-ctrl-c-init)))
 
 (defun cb-haskell/init-haskell-flyspell ()
   (use-package haskell-flyspell
-    :commands haskell-flyspell-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-flyspell-init)))
+    :functions (haskell-flyspell-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-flyspell-init)))
 
 (defun cb-haskell/init-haskell-ghc-opts ()
   (use-package haskell-ghc-opts
-    :commands haskell-ghc-opts-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-ghc-opts-init)))
+    :functions (haskell-ghc-opts-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-ghc-opts-init)))
 
 (defun cb-haskell/init-haskell-imports ()
   (use-package haskell-imports
-    :commands haskell-imports-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-imports-init)))
+    :functions (haskell-imports-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-imports-init)))
 
 (defun cb-haskell/init-haskell-meta-ret ()
   (use-package haskell-meta-ret
-    :commands haskell-meta-ret-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-meta-ret-init)))
+    :functions (haskell-meta-ret-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-meta-ret-init)))
 
 (defun cb-haskell/init-haskell-parser ()
   (with-eval-after-load 'haskell-mode
@@ -340,20 +351,30 @@
 
 (defun cb-haskell/init-haskell-pragmas ()
   (use-package haskell-pragmas
-    :commands haskell-pragmas-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-pragmas-init)))
+    :functions (haskell-pragmas-init)
+    :init (add-hook 'haskell-mode-hook #'haskell-pragmas-init)))
 
 (defun cb-haskell/init-haskell-ret ()
   (use-package haskell-ret
-    :commands haskell-ret-init
-    :init
-    (add-hook 'haskell-mode-hook #'haskell-ret-init)))
+    :functions haskell-ret-init
+    :init (add-hook 'haskell-mode-hook #'haskell-ret-init)))
 
 (defun cb-haskell/init-haskell-unicode ()
   (use-package haskell-unicode
-    :commands haskell-unicode-init
+    :functions haskell-unicode-init
+    :init (add-hook 'haskell-mode-hook #'haskell-unicode-init)))
+
+(defun cb-haskell/init-haskell-smart-commands ()
+  (use-package haskell-smart-commands
+    :functions (haskell-smart-commands-init)
     :init
-    (add-hook 'haskell-mode-hook #'haskell-unicode-init)))
+    (progn
+      (add-hook 'haskell-interactive-mode-hook #'haskell-smart-commands-init)
+      (add-hook 'haskell-mode-hook #'haskell-smart-commands-init))))
+
+(defun cb-haskell/init-haskell-autoinsert ()
+  (use-package haskell-autoinsert
+    :functions (haskell-autoinsert-init)
+    :config (haskell-autoinsert-init)))
 
 ;;; packages.el ends here

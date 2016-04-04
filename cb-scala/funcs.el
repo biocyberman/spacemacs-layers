@@ -70,7 +70,7 @@
   (s-matches? (rx bos (* space) "}") (buffer-substring (point) (line-end-position))))
 
 (defun scala/brace-group-starts-with-case-expr? ()
-  (when (sp/inside-curly-braces-with-content?)
+  (when (sp-inside-curly-braces-with-content?)
     (-let [(&plist :beg beg :end end) (sp-get-enclosing-sexp)]
       (s-matches? (rx (* space) "case")
                   (buffer-substring (1+ beg) (1- end))))))
@@ -80,6 +80,13 @@
     (goto-char (match-end 0))
     (newline-and-indent)))
 
+(defun scala--open-line-below-current-indentation ()
+  "Open a new line below at the current indent level."
+  (let ((col (save-excursion (back-to-indentation) (current-column))))
+    (goto-char (line-end-position))
+    (newline)
+    (indent-to col)))
+
 (defun scala/ret (&optional arg)
   "Insert a newline with context-sensitive formatting."
   (interactive "P")
@@ -87,28 +94,28 @@
     (cond
      ((scala/at-scaladoc?)
       (goto-char (line-end-position))
-      (core/open-line-below-current-indentation)
+      (scala--open-line-below-current-indentation)
       (insert "* "))
 
      ((or arg (cb-buffers-in-string-or-comment?))
       (comment-indent-new-line)
       (just-one-space))
 
-     ((sp/inside-curly-braces-blank-content? nil sexp)
-      (sp/split-braced-expression-over-new-lines (rx ";") sexp))
+     ((sp-inside-curly-braces-blank-content? nil sexp)
+      (sp-split-braced-expression-over-new-lines (rx ";") sexp))
 
-     ((and (sp/inside-curly-braces-with-content? t sexp)
+     ((and (sp-inside-curly-braces-with-content? t sexp)
            (scala/blank-up-to-curly?)
            (scala/after-lambda-arrow?))
-      (sp/split-braced-expression-over-new-lines (rx ";") sexp)
+      (sp-split-braced-expression-over-new-lines (rx ";") sexp)
       (goto-char (line-end-position))
       (save-excursion
         (scala/maybe-swing-down-lambda-body))
       (newline-and-indent))
 
-     ((and (sp/inside-curly-braces-with-content? t sexp)
+     ((and (sp-inside-curly-braces-with-content? t sexp)
            (scala/brace-group-starts-with-case-expr?))
-      (sp/split-braced-expression-over-new-lines (rx ";") sexp)
+      (sp-split-braced-expression-over-new-lines (rx ";") sexp)
       (cond
        ((scala/after-lambda-arrow?)
         (newline-and-indent))
@@ -118,8 +125,8 @@
 
       (goto-char (line-end-position)))
 
-     ;; ((sp/inside-curly-braces-with-content? t)
-     ;;  (sp/split-braced-expression-over-new-lines (rx ";"))
+     ;; ((sp-inside-curly-braces-with-content? t)
+     ;;  (sp-split-braced-expression-over-new-lines (rx ";"))
      ;;  (goto-char (line-end-position))
      ;;  (save-excursion
      ;;    (scala/maybe-swing-down-lambda-body)
@@ -127,7 +134,7 @@
      ;;    (spacemacs/scala-join-line)))
 
      (t
-      (sp/generic-prog-ret)))))
+      (sp-generic-prog-ret)))))
 
 (defun scala/at-scaladoc? ()
   (s-matches? (rx bol (* space) (? "/") (+ "*")) (cb-buffers-current-line)))
@@ -153,49 +160,49 @@
 
    ;; Insert new type decl case below the current one.
    ((s-matches? (rx bol (* space) "var" eow) (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "var ${1:ident} = $0")
     (message "New var binding"))
 
    ;; Insert new type decl case below the current one.
    ((s-matches? (rx bol (* space) (? "lazy" (+ space)) "val" eow) (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "val ${1:ident} = $0")
     (message "New val binding"))
 
    ;; Insert new type decl case below the current one.
    ((s-matches? (rx bol (* space) "private" (+ space) (? "lazy" (+ space)) "val" eow) (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "private val ${1:ident} = $0")
     (message "New val binding"))
 
    ;; Insert new type decl case below the current one.
    ((s-matches? (rx bol (* space) "protected" (+ space) (? "lazy" (+ space)) "val" eow) (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "protected val ${1:ident} = $0")
     (message "New val binding"))
 
    ;; Insert new case class.
    ((or (scala/at-case-class?) (scala/at-sealed-trait?) (scala/at-abstract-sealed-class?))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "case class ${1:Case}(${2:params...})")
     (message "New case class"))
 
    ;; Insert new case object.
    ((scala/at-case-object?)
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "case object ${1:Name}")
     (message "New case object"))
 
    ;; Insert new type decl case below the current one.
    ((s-matches? (rx bol (* space) "case") (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (yas-expand-snippet "case ${1:binding} => $0")
     (message "New data case"))
 
    ;; Insert new import statement
    ((s-matches? (rx bol (* space) "import" eow) (cb-buffers-current-line))
-    (core/open-line-below-current-indentation)
+    (scala--open-line-below-current-indentation)
     (insert "import ")
     (message "New import statement"))
 
@@ -543,5 +550,9 @@ fails to find the sbt root."
                                  (directory-files (concat dir "project") nil ".+\\.scala$"))))))))
           (when root
             (setq-local sbt:buffer-project-root root))))))
+
+(defun cb-scala/turn-off-aggressive-indent ()
+  (when (fboundp 'aggressive-indent-mode)
+    (aggressive-indent-mode -1)))
 
 ;;; funcs.el ends here

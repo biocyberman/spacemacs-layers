@@ -7,7 +7,8 @@
 
 (defconst cb-idris-packages
   '(idris-mode
-    smart-ops))
+    smart-ops
+    (idris-autoinsert :location local)))
 
 (defun cb-idris/init-idris-mode ()
   (use-package idris-mode
@@ -88,17 +89,17 @@
           (,(rx (not (any "(")) (group ",") (not (any ")")))
            1 'font-lock-comment-face)
 
-          ,(core/font-lock-replace-match (rx (or (and space (group-n 1 ".") space)
+          ,(cb-core-font-lock-replace-match (rx (or (and space (group-n 1 ".") space)
                                                  (and "(" (group-n 1 ".") ")")
                                                  ))
                                          1 "·")
 
-          ,(core/font-lock-replace-match (rx space (group "<-") (or space eol)) 1 "←")
-          ,(core/font-lock-replace-match (rx space (group "->") (or space eol)) 1 "→")
-          ,(core/font-lock-replace-match (rx space (group "=>") (or space eol)) 1 "⇒")
+          ,(cb-core-font-lock-replace-match (rx space (group "<-") (or space eol)) 1 "←")
+          ,(cb-core-font-lock-replace-match (rx space (group "->") (or space eol)) 1 "→")
+          ,(cb-core-font-lock-replace-match (rx space (group "=>") (or space eol)) 1 "⇒")
 
           ;; Lambda forms
-          ,(core/font-lock-replace-match
+          ,(cb-core-font-lock-replace-match
             (rx (group "\\") (and (* space)
                                   (or word "_" (and "(" (* nonl) ")"))
                                   (*? nonl))
@@ -146,3 +147,8 @@
 
   (define-smart-ops-for-mode 'idris-mode cb-idris/smart-ops)
   (define-smart-ops-for-mode 'idris-repl-mode cb-idris/smart-ops))
+
+(defun cb-idris/init-idris-autoinsert ()
+  (use-package idris-autoinsert
+    :functions (idris-autoinsert-init)
+    :config (idris-autoinsert-init)))

@@ -3,6 +3,7 @@
 ;; Copyright (C) 2016  Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
+;; Package-Requires: ((s "1.10.0") (dash "2.12.1") (magit "20160320.152"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,6 +22,14 @@
 
 ;; Extract the JIRA ticket number from the current branch name, and prepend
 ;; commit messages with that ticket number.
+
+;; Add `(git-commit-jira-prefix-init)' to your Emacs configuration to initialise the package. If you
+;; use `use-package', the form below will do the right thing:
+;;
+;;   (use-package git-commit-jira-prefix
+;;     :after git-commit
+;;     :commands git-commit-jira-prefix-init
+;;     :config (git-commit-jira-prefix-init))
 
 ;;; Code:
 

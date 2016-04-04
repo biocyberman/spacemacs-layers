@@ -14,16 +14,18 @@
     sbt-mode
     ensime
     smart-ops
-    cb-buffers
+    indent-dwim
     aggressive-indent
     flycheck
+    popwin
 
     (sbt-file-mode :location local)
     (scala-errors :location local)
     (scala-pretty-sbt :location local)
     (scala-yasnippet :location local)
     (ensime-flycheck-integration :location local)
-    (ensime-diminished-modeline :location local)))
+    (ensime-diminished-modeline :location local)
+    (scala-autoinsert :location local)))
 
 (defun cb-scala/post-init-aggressive-indent ()
   (use-package aggressive-indent
@@ -68,7 +70,7 @@
       (ensime-mode +1)))
 
   (add-hook 'scala-mode-hook #'scala/configure-ensime)
-  (add-hook 'ensime-mode-hook #'cb-core/turn-off-aggressive-indent-mode)
+  (add-hook 'ensime-mode-hook #'cb-scala/turn-off-aggressive-indent)
 
   (setq ensime-auto-generate-config t)
   (setq ensime-implicit-gutter-icons nil)
@@ -169,7 +171,7 @@ A prefix argument will add the type to the kill ring."
   (setq sbt:program-name "sbt -Dsbt.log.noformat=true")
 
   (defun cb-scala/set-up-sbt-mode ()
-    (cb-core/turn-off-aggressive-indent-mode)
+    (cb-scala/turn-off-aggressive-indent)
     (show-smartparens-mode -1)
     (show-paren-mode -1)
     (local-set-key (kbd "C-l") #'spacemacs/comint-clear-buffer)
@@ -279,6 +281,13 @@ A prefix argument will add the type to the kill ring."
                     (cb-scala/at-repl-prompt?)))
         cb-scala/common-ops))))
 
+(defun cb-scala/post-init-popwin ()
+  (use-package popwin
+    :config
+    (progn
+      (push '("^\\*sbt\\*" :regexp t :dedicated t :position bottom :stick t :noselect nil :height 33)
+            popwin:special-display-config))))
+
 (defun cb-scala/init-scala-errors ()
   (use-package scala-errors))
 
@@ -296,10 +305,10 @@ A prefix argument will add the type to the kill ring."
   (use-package ensime-diminished-modeline
     :after ensime))
 
-(defun cb-scala/post-init-cb-buffers ()
-  (use-package cb-buffers
+(defun cb-scala/post-init-indent-dwim ()
+  (use-package indent-dwim
     :config
-    (add-to-list 'cb-buffers-indent-commands-alist '(scala-mode . ensime-format-source))))
+    (add-to-list 'indent-dwim-commands-alist '(scala-mode . ensime-format-source))))
 
 (defun cb-scala/init-sbt-file-mode ()
   (use-package sbt-file-mode
@@ -314,5 +323,10 @@ A prefix argument will add the type to the kill ring."
   (use-package ensime-flycheck-integration
     :after (ensime flycheck)
     :config (ensime-flycheck-integration-init)))
+
+(defun cb-scala/init-scala-autoinsert ()
+  (use-package scala-autoinsert
+    :functions (scala-autoinsert-init)
+    :config (scala-autoinsert-init)))
 
 ;;; packages.el ends here

@@ -1,14 +1,6 @@
-;;; packages.el --- cb-ocaml Layer packages File for Spacemacs
-;;
-;; Copyright (c) 2012-2014 Sylvain Benner
-;; Copyright (c) 2014-2015 Sylvain Benner & Contributors
-;;
-;; Author: Sylvain Benner <sylvain.benner@gmail.com>
-;; URL: https://github.com/syl20bnr/spacemacs
-;;
-;; This file is not part of GNU Emacs.
-;;
-;;; License: GPLv3
+;;; packages.el --- cb-ocaml Layer packages File for Spacemacs  -*- lexical-binding: t; -*-
+;;; Commentary:
+;;; Code:
 
 (defconst cb-ocaml-packages
   '(merlin
@@ -17,7 +9,8 @@
     flycheck-ocaml
     aggressive-indent
     (merlin-eldoc :location local)
-    (smart-ops :location local)))
+    (smart-ops :location local)
+    (ocaml-autoinsert :location local)))
 
 (eval-when-compile
   (require 'dash)
@@ -41,7 +34,7 @@
 
   (font-lock-add-keywords
    'tuareg-mode
-   `(,(core/font-lock-replace-match (rx space (group "->") space) 1 "→")
+   `(,(cb-core-font-lock-replace-match (rx space (group "->") space) 1 "→")
      ("->" . font-lock-keyword-face)
      (,(rx (or bol space) "|" (or eol space)) . font-lock-keyword-face)
      )))
@@ -70,7 +63,7 @@
 
 (defun cb-ocaml/post-init-merlin ()
   (with-eval-after-load 'merlin
-    (core/remap-face 'merlin-type-face 'core/bg-hl-ok)
+    (core/remap-face 'merlin-type-face 'cb-faces-bg-hl-ok)
     (evil-define-key 'normal merlin-mode-map (kbd "M-.") 'merlin-locate)
     (define-key merlin-mode-map (kbd "M-.") 'merlin-locate))
   (with-eval-after-load 'tuareg
@@ -132,3 +125,10 @@
                  :action
                  (lambda (&rest _)
                    (call-interactively 'utop-eval-input))))))
+
+(defun cb-ocaml/init-ocaml-autoinsert ()
+  (use-package ocaml-autoinsert
+    :functions (ocaml-autoinsert-init)
+    :config (ocaml-autoinsert-init)))
+
+;;; packages.el ends here

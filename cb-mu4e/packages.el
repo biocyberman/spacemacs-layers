@@ -95,8 +95,11 @@
       (setq message-kill-buffer-on-exit t)
       (setq mu4e-compose-signature-auto-include t)
 
-      ;; Use offlineimap to manage maildir.
-      (setq mu4e-get-mail-command "offlineimap")
+      (setq mu4e-get-mail-command "mbsync -a -q")
+      (setq mu4e-change-filenames-when-moving t)
+
+      (setq smtpmail-queue-mail nil)
+      (setq smtpmail-queue-dir (f-join mu4e-maildir "/queue/cur"))
 
       ;; Save attachments to Downloads dir.
       (setq mu4e-attachment-dir (f-expand "~/Downloads"))
@@ -108,11 +111,10 @@
       (setq message-citation-line-function 'message-insert-formatted-citation-line)
       (setq message-citation-line-format "On %a, %b %d %Y, %f wrote:\n")
 
-      ;; Update every 2 minutes.
-      (setq mu4e-update-interval 120)
+      ;; Update every 5 minutes.
+      (setq mu4e-update-interval (* 60 5))
 
       ;; Disable autofill in compose buffers
-
       (add-hook 'mu4e-compose-mode-hook #'turn-off-auto-fill)
 
       ;; use imagemagick, if available

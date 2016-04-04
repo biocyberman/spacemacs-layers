@@ -28,7 +28,7 @@
     (insert " ")
     (save-excursion (insert " ")))
    (t
-    (sp/generic-prog-space))))
+    (sp-generic-prog-space))))
 
 
 ;;; Commands
@@ -57,7 +57,7 @@
     (delete-char -1))
 
    (t
-    (sp/generic-prog-backspace))))
+    (sp-generic-prog-backspace))))
 
 ;;; Smart M-RET
 
@@ -129,7 +129,7 @@
       (newline))
 
      (t
-      (sp/generic-prog-ret)))))
+      (sp-generic-prog-ret)))))
 
 (defun idris/meta-ret ()
   "Create a newline and perform a context-sensitive continuation.

@@ -3,11 +3,13 @@
 ;;; Code:
 
 (eval-when-compile
-  (require 'use-package nil t)
-  (require 's nil t)
-  (require 'dash nil t)
-  (require 'f nil t)
-  (require 'noflet nil t))
+  (require 'cb-vars nil t))
+
+(require 'use-package)
+(require 's)
+(require 'dash)
+(require 'f)
+(require 'noflet)
 
 (defconst cb-core-packages
   '(dash-functional
@@ -27,17 +29,24 @@
     ido
     recentf
     neotree
+    time
 
     (cb-buffers :location local)
     (locate-key-binding :location local)
     (smart-ops :location local)
-    (case :location local)))
+    (case :location local)
+    (create-layer-local-package :location local)
+    (indirect-region :location local)
+    (remove-line-breaks :location local)
+    (insert-timestamp :location local)
+    (insert-shebang :location local)
+    (insert-variable-value :location local)
+    (insert-guid :location local)
+    (helm-http-status :location local)
+    (indent-dwim :location local)))
 
 (defun cb-core/user-config ()
   "This procedure should be called in `dotspacemacs/user-config'."
-  (setq-default company-minimum-prefix-length 3)
-  (setq-default company-tooltip-align-annotations t)
-
   (setq recentf-max-saved-items 1000)
   (setq bookmark-save-flag nil)
 
@@ -77,58 +86,14 @@
      ((t (:foreground ,solarized-hl-cyan))))
    '(helm-selection
      ((((background light)) :background "gray90" :foreground "black" :underline nil)
-      (((background dark))  :background "black"  :foreground "white" :underline nil))))
-
-  (defun helm-httpstatus ()
-    "Helm command to display HTTP status codes."
-    (interactive)
-    (let ((source '((name . "HTTP STATUS")
-                    (candidates . (("100 Continue") ("101 Switching Protocols")
-                                   ("102 Processing") ("200 OK")
-                                   ("201 Created") ("202 Accepted")
-                                   ("203 Non-Authoritative Information") ("204 No Content")
-                                   ("205 Reset Content") ("206 Partial Content")
-                                   ("207 Multi-Status") ("208 Already Reported")
-                                   ("300 Multiple Choices") ("301 Moved Permanently")
-                                   ("302 Found") ("303 See Other")
-                                   ("304 Not Modified") ("305 Use Proxy")
-                                   ("307 Temporary Redirect") ("400 Bad Request")
-                                   ("401 Unauthorized") ("402 Payment Required")
-                                   ("403 Forbidden") ("404 Not Found")
-                                   ("405 Method Not Allowed") ("406 Not Acceptable")
-                                   ("407 Proxy Authentication Required") ("408 Request Timeout")
-                                   ("409 Conflict") ("410 Gone")
-                                   ("411 Length Required") ("412 Precondition Failed")
-                                   ("413 Request Entity Too Large")
-                                   ("414 Request-URI Too Large")
-                                   ("415 Unsupported Media Type")
-                                   ("416 Request Range Not Satisfiable")
-                                   ("417 Expectation Failed") ("418 I'm a teapot")
-                                   ("422 Unprocessable Entity") ("423 Locked")
-                                   ("424 Failed Dependency") ("425 No code")
-                                   ("426 Upgrade Required") ("428 Precondition Required")
-                                   ("429 Too Many Requests")
-                                   ("431 Request Header Fields Too Large")
-                                   ("449 Retry with") ("500 Internal Server Error")
-                                   ("501 Not Implemented") ("502 Bad Gateway")
-                                   ("503 Service Unavailable") ("504 Gateway Timeout")
-                                   ("505 HTTP Version Not Supported")
-                                   ("506 Variant Also Negotiates")
-                                   ("507 Insufficient Storage") ("509 Bandwidth Limit Exceeded")
-                                   ("510 Not Extended")
-                                   ("511 Network Authentication Required")))
-                    (action . message))))
-      (helm-other-buffer (list source) "*helm httpstatus*"))))
+      (((background dark))  :background "black"  :foreground "white" :underline nil)))))
 
 (defun cb-core/post-init-aggressive-indent ()
-
-  (defun cb-core/turn-off-aggressive-indent-mode (&rest ignored)
-    (aggressive-indent-mode -1))
-
-  (with-eval-after-load 'aggressive-indent
-    (add-to-list 'aggressive-indent-excluded-modes 'restclient-mode))
-
-  (global-aggressive-indent-mode))
+  (use-package aggressive-indent
+    :config
+    (progn
+      (add-to-list 'aggressive-indent-excluded-modes 'restclient-mode)
+      (global-aggressive-indent-mode))))
 
 (defun cb-core/init-ag ()
   (use-package ag :commands ag))
@@ -152,8 +117,8 @@
   (setq helm-gtags-suggested-key-mapping t)
 
   (with-eval-after-load 'pulse
-    (core/remap-face 'pulse-highlight-face 'core/bg-flash)
-    (core/remap-face 'pulse-highlight-start-face 'core/bg-flash))
+    (core/remap-face 'pulse-highlight-face 'cb-faces-bg-flash)
+    (core/remap-face 'pulse-highlight-start-face 'cb-faces-bg-flash))
 
   (with-eval-after-load 'helm-gtags
     (dolist (state '(normal insert))
@@ -184,10 +149,8 @@
 (defun cb-core/init-smart-ops ()
   (use-package smart-ops
     :diminish smart-ops-mode
-    :config
-    (progn
-      (smart-ops-global-mode)
-      (evil-define-key 'insert smart-ops-mode-map (kbd "<backspace>") nil))))
+    :functions (smart-ops-init)
+    :config (smart-ops-init)))
 
 (defun cb-core/post-init-iedit ()
   (custom-set-faces
@@ -206,24 +169,25 @@
   (use-package locate-key-binding
     :commands (locate-key-binding)))
 
-(defun cb-core/regexp-quoted-ignored-dirs ()
-  (--map (format "/%s/" (regexp-quote it)) cb-vars-ignored-dirs))
-
 (defun cb-core/post-init-recentf ()
-  (setq recentf-save-file (concat spacemacs-cache-directory "recentf"))
-  (setq recentf-max-menu-items 10)
-  (setq recentf-keep '(file-remote-p file-readable-p))
+  (use-package recentf
+    :config
+    (progn
+      (setq recentf-save-file (concat spacemacs-cache-directory "recentf"))
+      (setq recentf-max-menu-items 10)
+      (setq recentf-keep '(file-remote-p file-readable-p))
 
-  (defadvice recentf-cleanup (around hide-messages activate)
-    "Do not message when cleaning up recentf list."
-    (noflet ((message (&rest args))) ad-do-it))
+      (defun cb-core/shut-up-recentf (old-fn &rest rs)
+        (noflet ((message (&rest args)))
+          (apply old-fn rs)))
 
-  (with-eval-after-load 'recentf
-    (setq recentf-exclude
-          (-distinct (-concat recentf-exclude
-                              (cb-core/regexp-quoted-ignored-dirs)
-                              cb-vars-ignored-files-regexps)))
-    (recentf-cleanup)))
+      (advice-add 'recentf-cleanup :around #'cb-core/shut-up-recentf)
+
+      (setq recentf-exclude
+            (-distinct (-concat recentf-exclude
+                                (cb-core-regexp-quoted-ignored-dirs)
+                                cb-vars-ignored-files-regexps)))
+      (recentf-cleanup))))
 
 (defun cb-core/post-init-ido ()
   (setq ido-use-filename-at-point 'guess)
@@ -237,20 +201,58 @@
     :config
     (progn
       (bind-key* (kbd "C-<backspace>") 'cb-buffers-maybe-kill)
-      (bind-key (kbd "C-c k b") 'cb-buffers-maybe-kill-all)
-
-      (define-key prog-mode-map (kbd "M-q") #'cb-buffers-indent-dwim)
-      (evil-define-key 'normal  prog-mode-map (kbd "M-q") #'cb-buffers-indent-dwim)
-
-      (with-eval-after-load 'sgml-mode
-        (evil-define-key 'normal  sgml-mode-map (kbd "M-q") #'cb-buffers-indent-dwim))
-
-      (with-eval-after-load 'nxml-mode
-        (evil-define-key 'normal nxml-mode-map (kbd "M-q") #'cb-buffers-indent-dwim)))))
+      (bind-key (kbd "C-c k b") 'cb-buffers-maybe-kill-all))))
 
 (defun cb-core/post-init-neotree ()
   (use-package neotree
     :config
     (setq neo-theme 'arrow)))
+
+(defun cb-core/init-create-layer-local-package ()
+  (use-package create-layer-local-package
+    :commands (create-layer-local-package)))
+
+(defun cb-core/init-indirect-region ()
+  (use-package indirect-region
+    :commands (indirect-region)))
+
+(defun cb-core/init-remove-line-breaks ()
+  (use-package remove-line-breaks
+    :commands (remove-line-breaks)))
+
+(defun cb-core/init-insert-timestamp ()
+  (use-package insert-timestamp
+    :commands (insert-timestamp)
+    :init (spacemacs/set-leader-keys "iT" #'insert-timestamp)))
+
+(defun cb-core/init-insert-shebang ()
+  (use-package insert-shebang
+    :commands (insert-shebang)
+    :init (spacemacs/set-leader-keys "i#" 'insert-shebang)))
+
+(defun cb-core/init-insert-variable-value ()
+  (use-package insert-variable-value
+    :commands (insert-variable-value)))
+
+(defun cb-core/init-insert-guid ()
+  (use-package insert-guid
+    :commands (insert-guid)
+    :init (spacemacs/set-leader-keys "iU" 'insert-guid)))
+
+(defun cb-core/init-helm-http-status ()
+  (use-package helm-http-status
+    :commands (helm-http-status)))
+
+(defun cb-core/init-indent-dwim ()
+  (use-package indent-dwim
+    :functions (indent-dwim-init)
+    :config (indent-dwim-init)))
+
+(defun cb-core/init-time ()
+  (use-package time
+    :config
+    (progn
+      (setq display-time-default-load-average nil)
+      (display-time-mode +1))))
 
 ;;; packages.el ends here
