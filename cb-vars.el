@@ -127,7 +127,11 @@
     ".ensime_cache"
 
     ;; Elm
-    ".*/elm-stuff"))
+    ".*/elm-stuff"
+
+    ;; Org agenda files
+    "org/agenda"
+    ))
 
 (provide 'cb-vars)
 
