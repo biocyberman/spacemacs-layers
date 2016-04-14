@@ -12,7 +12,7 @@
 
 (defconst org-agenda-directory (f-join org-directory "agenda/")
   "Give agenda files a dedicated location undr org-directory")
-(defvar cb-org-work-file (f-join org-agenda-directory "/work.org")
+(defconst cb-org-work-file (f-join org-agenda-directory "/work.org")
   "Defines the path to file for work-related todos, etc.")
 
 (defconst cb-org-packages
@@ -176,9 +176,9 @@
 
   (setq org-todo-keyword-faces
         (quote (("TODO" :foreground "red" :weight bold)
-                ("NEXT" :foreground "blue" :weight bold)
-                ("SOMEDAY" . ,solarized-hl-magenta)
-                ("PROJECT" . ,solarized-hl-magenta)
+                ("NEXT" :foreground "light green" :weight bold)
+                ("SOMEDAY" :foreground "gold" :weight bold)
+                ("PROJECT" :foreground "purple" :weight bold)
                 ("DONE" :foreground "forest green" :weight bold)
                 ("WAITING" :foreground "orange" :weight bold)
                 ("HOLD" :foreground "magenta" :weight bold)
