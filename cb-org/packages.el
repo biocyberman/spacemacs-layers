@@ -130,11 +130,11 @@
        '(org-document-info-keyword ((t :foreground unspecified :inherit org-meta-line)))
 
        `(org-block-begin-line
-         ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
-          (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
+         ((((background light)) :italic t :foreground "cyan" :background nil)
+          (((background dark))  :italic t :foreground "cyan" :background nil)))
        `(org-block-end-line
-         ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
-          (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
+         ((((background light)) :italic t :foreground "cyan" :background nil)
+          (((background dark))  :italic t :foreground "cyan" :background nil)))
        '(org-block
          ((((background light)) :background nil)
           (((background dark))  :background nil)))
@@ -212,7 +212,7 @@
          `(org-scheduled-today ((,class (:background nil :height 1.0))))
          `(org-scheduled-previously ((,class (:background nil :height 1.0))))
          ))
-      >>>>>>> variant B
+
       (defun cb-org/fold-all ()
         (interactive)
         (org-cycle '(16)))
@@ -306,7 +306,6 @@
          `(org-agenda-done ((,class (:background nil :height 1.0))))
          `(org-scheduled-today ((,class (:background nil :height 1.0))))
          `(org-scheduled-previously ((,class (:background nil :height 1.0))))))))
-  ======= end
 
   ;; Exit minibuffer before adding notes.
 

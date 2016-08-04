@@ -15,7 +15,6 @@
 (autoload 'org-parse-time-string "org")
 (autoload 'org-time-stamp-format "org")
 
-<<<<<<< HEAD
 ;; Leader commands
 
 (defun cb-org/goto-diary ()
@@ -41,7 +40,6 @@
   (interactive)
   (org-tags-view nil))
 
-
 ;;; Tree editing
 
 (defun cb-org-narrow-to-subtree-content ()
@@ -74,7 +72,6 @@
     (org-clone-subtree-with-time-shift 1 '(16))
     (call-interactively 'org-refile)))
 
-
 ;;; Custom keyboard commands
 
 (defun cb-org/ctrl-c-ctrl-k (&optional n)
@@ -97,9 +94,6 @@
   (org-agenda current-prefix-arg "A")
   )
 
-
-=======
->>>>>>> 15bce7a3578fbfd42dde15a6678dd0ecdf6ca6eb
 ;;; Diary utils
 
 (defun calendar-nearest-to (target-dayname target-day target-month)
