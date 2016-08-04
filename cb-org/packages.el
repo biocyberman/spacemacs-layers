@@ -10,9 +10,9 @@
 
 (defconst org-directory "~/org/")
 
-(defconst org-agenda-directory (f-join org-directory "agenda/")
+(defconst org-agenda-directory (f-join (file-name-as-directory org-directory) "agenda")
   "Give agenda files a dedicated location undr org-directory")
-(defconst cb-org-work-file (f-join org-agenda-directory "/work.org")
+(defconst cb-org-work-file (concat (file-name-as-directory org-agenda-directory) "work.org")
   "Defines the path to file for work-related todos, etc.")
 
 (defconst cb-org-packages
