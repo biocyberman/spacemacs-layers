@@ -18,8 +18,15 @@
       (setq groovy-home "/usr/local/"))))
 
 (defun cb-groovy/post-init-smart-ops ()
-  (define-smart-ops-for-mode 'groovy-mode
-    (smart-ops ":" "," :pad-before nil))
+  (use-package smart-ops
+    :config
+    (progn
+      (add-hook 'groovy-mode-hook #'smart-ops-mode)
 
-  (define-smart-ops-for-mode 'inferior-groovy-mode
-    (smart-ops ":" "," :pad-before nil)))
+      (define-smart-ops-for-mode 'groovy-mode
+        (smart-ops ":" "," :pad-before nil)
+        (smart-ops-default-ops))
+
+      (define-smart-ops-for-mode 'inferior-groovy-mode
+        (smart-ops ":" "," :pad-before nil)
+        (smart-ops-default-ops)))))

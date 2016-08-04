@@ -3,10 +3,10 @@
 ;;; Code:
 
 (eval-when-compile
-  (require 'use-package nil t))
-
-(require 's)
-(require 'f)
+  (require 's)
+  (require 'f)
+  (require 'cb-use-package-extensions)
+  (require 'use-package))
 
 (defconst org-directory "~/org/")
 
@@ -17,223 +17,313 @@
 
 (defconst cb-org-packages
   '(org
-    org-drill-table
     gnuplot
-    org-agenda
-    org-indent
-    org-archive
-    org-table
-    org-src
-    org-clock
-    org-crypt
-    org-drill
-    org-capture
-    ox
-    ox-texinfo
     org-present
     (cb-org-latex-preview-retina :location local)
-    (org-autoinsert :location local)))
+    (org-autoinsert :location local)
+    (cb-org-clock-cascade :location local)
+    (cb-org-export-koma-letter :location local)
+    (cb-org-subtree :location local)
+    (cb-org-pgp-decrpyt :location local)
+    (cb-org-recalculate-whole-table :location local)
+    (cb-org-capture-url :location local)
+    (cb-org-gdrive :location local)
+    (cb-org-goto :location local)
+    (cb-org-work :location local)
+    (cb-org-directory :location local)
+    (cb-org-ctrl-c-ret :location local)
+    (cb-org-ctrl-c-ctrl-k :location local)))
 
-;; HACK: Set aliases for incorrectly-prefixed outline functions required by org.
-(defalias 'outline-show-children 'show-children)
-(defalias 'outline-hide-subtree 'hide-subtree)
-(defalias 'outline-show-subtree 'show-subtree)
-(defalias 'outline-show-branches 'show-branches)
-(defalias 'outline-hide-sublevels 'hide-sublevels)
-(defalias 'outline-hide-other 'hide-other)
-(defalias 'outline-hide-leaves 'hide-leaves)
-(defalias 'outline-hide-body 'hide-body)
-(defalias 'outline-hide-region-body 'hide-region-body)
-(defalias 'outline-hide-entry 'hide-entry)
-(defalias 'outline-show-entry 'show-entry)
-(defalias 'outline-show-all 'show-all)
 
-(defun cb-org/post-init-org-present ()
-  (use-package org-present
-    :after org
+(defun cb-org/init-cb-org-directory ()
+  (use-package cb-org-directory
     :config
-    (progn
-      (setq org-present-text-scale 4)
+    (setq org-directory (cb-org-directory))))
 
-      ;; Disable flyspell during presentations.
-      (defvar-local cb-org/use-flyspell? nil)
-      (defun cb-org/set-use-flyspell () (setq cb-org/use-flyspell? t))
-      (defun cb-org/maybe-reenable-flyspell () (when cb-org/use-flyspell? (flyspell-mode +1)))
-
-      (add-hook 'flyspell-mode-hook #'cb-org/set-use-flyspell)
-      (add-hook 'org-present-mode-hook #'turn-off-flyspell)
-      (add-hook 'org-present-mode-quit-hook #'cb-org/maybe-reenable-flyspell)
-
-      (add-hook 'org-present-mode-hook #'spacemacs/toggle-mode-line-on)
-      (add-hook 'org-present-mode-quit-hook #'spacemacs/toggle-mode-line-off))))
+(defun cb-org/init-cb-org-work ()
+  (use-package cb-org-work
+    :after cb-org-directory))
 
 (defun cb-org/post-init-org ()
-  (defconst cb-org/default-stuck-projects
-    '("-ignore-3_years+TODO={TODO_OUT\\|PROJECT}/-MAYBE-DONE-CANCELLED" ("NEXT") nil "SCHEDULED:\\|\\<IGNORE\\>"))
+  (use-package org
+    :demand 5
+    :after cb-org-directory
+    :init
+    (spacemacs/declare-prefix "o" "org")
 
-  (add-hook 'org-mode-hook #'auto-revert-mode)
-  (add-hook 'org-mode-hook #'abbrev-mode)
+    :leader-bind
+    (("ob" . org-iswitchb)
+     ("oc" . org-clock-goto)
+     ("ok" . org-capture)
+     ("ol" . org-store-link)
+     ("oL" . org-insert-link)
+     ("os" . org-search-view))
 
-  (setq my-org-todo-file "~/org/agenda/todo.org")
-  (setq my-org-refile-file "~/org/agenda/refile.org")
-  (setq my-org-habit-file (f-join org-agenda-directory "enjoy.org"))
+    :bind
+    (:map org-mode-map
+          ("C-c C-." . org-time-stamp-inactive)
+          ("M-p" . org-metaup)
+          ("M-n" . org-metadown)
+          ("C-c c" . org-columns))
 
-  (setq org-default-notes-file (f-join org-agenda-directory "refile.org"))
-  (setq org-M-RET-may-split-line nil)
-  (setq org-attach-directory (f-join org-directory "data"))
-  (setq org-catch-invisible-edits 'smart)
-  (setq org-clock-persist-file (f-join org-directory ".org-clock-save"))
-  (setq org-completion-use-ido t)
-  (setq org-cycle-separator-lines 1)
-  (setq org-enforce-todo-dependencies t)
-  (setq org-footnote-auto-adjust t)
-  (setq org-id-locations-file (f-join spacemacs-cache-directory "org-id-locations"))
-  (setq org-indirect-buffer-display 'current-window)
-  (setq org-insert-heading-respect-content t)
-  (setq org-link-abbrev-alist '(("att" . org-attach-expand-link)))
-  (setq org-log-done 'time)
-  (setq org-log-into-drawer t)
-  (setq org-hide-emphasis-markers t)
-  (setq org-outline-path-complete-in-steps nil)
-  (setq org-pretty-entities t)
-  (setq org-refile-allow-creating-parent-nodes 'confirm)
-  (setq org-refile-target-verify-function (lambda () (not (member (nth 2 (org-heading-components)) org-done-keywords))))
-  (setq org-refile-targets '((nil :maxlevel . 5) (org-agenda-files :maxlevel . 5)))
-  (setq org-refile-use-outline-path t)
-  (setq org-return-follows-link t)
-  (setq org-reverse-note-order nil)
-  (setq org-confirm-elisp-link-function nil)
-  (setq org-startup-indented t)
-  (setq org-startup-with-inline-images t)
-  (setq org-stuck-projects cb-org/default-stuck-projects)
-  (setq org-hierarchical-todo-statistics nil)
-  (setq org-checkbox-hierarchical-statistics t)
-  (setq org-log-repeat nil)
+    :evil-bind
+    (:map org-mode-map
+          :state normal
+          ("zm" . cb-org/fold-all)
+          ("RET" . org-return))
 
-  ;; (setq org-todo-keywords '((type "MAYBE(m)" "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "CANCELLED(c@)")
-  ;;                           (type "PROJECT(p)" "|")
-  ;;                           (type "SOMEDAY(S)" "|")))
+    :config
+    (progn
+      (add-hook 'org-mode-hook #'auto-revert-mode)
+      (add-hook 'org-mode-hook #'abbrev-mode)
+      (setq my-org-todo-file "~/org/agenda/todo.org")
+      (setq my-org-refile-file "~/org/agenda/refile.org")
+      (setq my-org-habit-file (f-join org-agenda-directory "enjoy.org"))
 
-  ;; Faces
+      (setq org-default-notes-file (f-join org-agenda-directory "refile.org"))
+      (setq org-M-RET-may-split-line nil)
+      (setq org-attach-directory (f-join org-directory "data"))
+      (setq org-catch-invisible-edits 'smart)
+      (setq org-clock-persist-file (f-join org-directory ".org-clock-save"))
+      (setq org-completion-use-ido t)
+      (setq org-cycle-separator-lines 1)
+      (setq org-enforce-todo-dependencies t)
+      (setq org-footnote-auto-adjust t)
+      (setq org-id-locations-file (f-join spacemacs-cache-directory "org-id-locations"))
+      (setq org-indirect-buffer-display 'current-window)
+      (setq org-insert-heading-respect-content t)
+      (setq org-link-abbrev-alist '(("att" . org-attach-expand-link)))
+      (setq org-log-done 'time)
+      (setq org-log-into-drawer t)
+      (setq org-hide-emphasis-markers t)
+      (setq org-outline-path-complete-in-steps nil)
+      (setq org-pretty-entities t)
+      (setq org-refile-allow-creating-parent-nodes 'confirm)
+      (setq org-refile-target-verify-function (lambda () (not (member (nth 2 (org-heading-components)) org-done-keywords))))
+      (setq org-refile-targets '((nil :maxlevel . 5) (org-agenda-files :maxlevel . 5)))
+      (setq org-refile-use-outline-path t)
+      (setq org-return-follows-link t)
+      (setq org-reverse-note-order nil)
+      (setq org-confirm-elisp-link-function nil)
+      (setq org-startup-indented t)
+      (setq org-startup-with-inline-images t)
 
+      ;; Match projects that do not have a scheduled action or NEXT action.
+      (setq org-stuck-projects '("+project-ignore-maybe-done"
+                                 ("NEXT") nil
+                                 "SCHEDULED:"))
 
-  (custom-set-faces
-   '(org-hide ((t :background unspecified)))
-   '(org-meta-line ((t :italic nil :inherit font-lock-comment-face)))
-   '(org-document-info-keyword ((t :foreground unspecified :inherit org-meta-line)))
+      (setq org-hierarchical-todo-statistics nil)
+      (setq org-checkbox-hierarchical-statistics t)
+      (setq org-log-repeat nil)
 
-   `(org-block-begin-line
-     ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
-      (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
-   `(org-block-end-line
-     ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
-      (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
-   '(org-block
-     ((((background light)) :background nil)
-      (((background dark))  :background nil)))
-   '(org-block-background
-     ((((background light)) :background nil)
-      (((background dark))  :background nil))))
+      ;; (setq org-todo-keywords '((type "MAYBE(m)" "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "CANCELLED(c@)")
+      ;;                           (type "PROJECT(p)" "|")
+      ;;                           (type "SOMEDAY(S)" "|")))
 
-  ;; (setq org-todo-keyword-faces
-  ;;       `(("NEXT" . ,solarized-hl-orange)
-  ;;         ("ORGANISE_IN" . ,solarized-hl-orange)
-  ;;         ("ORGANISE_OUT" . ,solarized-hl-orange)
-  ;;         ("TODO_OUT" . ,solarized-hl-orange)
-  ;;         ("READY" . ,solarized-hl-blue)
-  ;;         ("ON-HOL" . ,solarized-hl-magenta)
-  ;;         ("OPEN" . font-lock-comment-face)
-  ;;         ("WAITING" . ,solarized-hl-magenta)))
-
-  ;; Config file name for diary
-  ;; (setq diary-file "~/org/agenda/diary.org")
-
-  (setq org-tag-alist '(
-                        (:startgroup . nil)
-                        ("@work" . ?w) ("@home" . ?h)
-                        ("@break" . ?b)
-                        (:endgroup . nil)
-                        ("GAP" . ?g)
-                        ("QUANTRONG" . ?t)
-                        ("goals" . ?a)
-                        ("HOME" . ?e)
-                        ("WORK" . ?r)
-                        )
-        )
-  (setq org-tag-faces
-        (quote (("GAP" :foreground "red" :weight bold)
-                ("QUANTRONG" :foreground "blue" :weight bold)
-                ("HOME" :foreground "forest green" :weight bold)
-                ("WORK" :foreground "orange" :weight bold)
-                ("CHOI" :foreground "magenta" :weight bold)
-                ("CANCELLED" :foreground "forest green" :weight bold)
-                ("MEETING" :foreground "forest green" :weight bold)
-                ("PHONE" :foreground "forest green" :weight bold))))
-
-  (setq org-todo-keywords
-        (quote ((sequence "TODO(t)" "NEXT(n)" "SOMEDAY(s)" "|" "PROJECT(r)" "DONE(d)")
-                (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)" "PHONE(p)" "MEETING(m)"))))
-
-  (setq org-todo-keyword-faces
-        (quote (("TODO" :foreground "red" :weight bold)
-                ("NEXT" :foreground "light green" :weight bold)
-                ("SOMEDAY" :foreground "gold" :weight bold)
-                ("PROJECT" :foreground "purple" :weight bold)
-                ("DONE" :foreground "forest green" :weight bold)
-                ("WAITING" :foreground "orange" :weight bold)
-                ("HOLD" :foreground "magenta" :weight bold)
-                ("CANCELLED" :foreground "forest green" :weight bold)
-                ("MEETING" :foreground "forest green" :weight bold)
-                ("PHONE" :foreground "forest green" :weight bold))))
+      ;; Faces
 
 
-  ;; Override themes which set weird headline properties.
+      (custom-set-faces
+       '(org-hide ((t :background unspecified)))
+       '(org-meta-line ((t :italic nil :inherit font-lock-comment-face)))
+       '(org-document-info-keyword ((t :foreground unspecified :inherit org-meta-line)))
 
-  (let ((class '((class color) (min-colors 89))))
-    (custom-set-faces
-     `(org-level-1 ((,class (:background nil :overline nil :height 1.0))))
-     `(org-level-2 ((,class (:background nil :height 1.0))))
-     `(org-level-3 ((,class (:background nil :height 1.0))))
-     `(org-level-4 ((,class (:background nil :height 1.0))))
-     `(org-level-5 ((,class (:background nil :height 1.0))))
-     `(org-level-6 ((,class (:background nil :height 1.0))))
-     `(org-level-7 ((,class (:background nil :height 1.0))))
-     `(org-level-8 ((,class (:background nil :height 1.0))))
+       `(org-block-begin-line
+         ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
+          (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
+       `(org-block-end-line
+         ((((background light)) :italic t :foreground ,solarized-hl-cyan :background nil)
+          (((background dark))  :italic t :foreground ,solarized-hl-cyan :background nil)))
+       '(org-block
+         ((((background light)) :background nil)
+          (((background dark))  :background nil)))
+       '(org-block-background
+         ((((background light)) :background nil)
+          (((background dark))  :background nil))))
+
+      ;; (setq org-todo-keyword-faces
+      ;;       `(("NEXT" . ,solarized-hl-orange)
+      ;;         ("ORGANISE_IN" . ,solarized-hl-orange)
+      ;;         ("ORGANISE_OUT" . ,solarized-hl-orange)
+      ;;         ("TODO_OUT" . ,solarized-hl-orange)
+      ;;         ("READY" . ,solarized-hl-blue)
+      ;;         ("ON-HOL" . ,solarized-hl-magenta)
+      ;;         ("OPEN" . font-lock-comment-face)
+      ;;         ("WAITING" . ,solarized-hl-magenta)))
+
+      ;; Config file name for diary
+      ;; (setq diary-file "~/org/agenda/diary.org")
+
+      (setq org-tag-alist '(
+                            (:startgroup . nil)
+                            ("@work" . ?w) ("@home" . ?h)
+                            ("@break" . ?b)
+                            (:endgroup . nil)
+                            ("GAP" . ?g)
+                            ("QUANTRONG" . ?t)
+                            ("goals" . ?a)
+                            ("HOME" . ?e)
+                            ("WORK" . ?r)
+                            )
+            )
+      (setq org-tag-faces
+            (quote (("GAP" :foreground "red" :weight bold)
+                    ("QUANTRONG" :foreground "blue" :weight bold)
+                    ("HOME" :foreground "forest green" :weight bold)
+                    ("WORK" :foreground "orange" :weight bold)
+                    ("CHOI" :foreground "magenta" :weight bold)
+                    ("CANCELLED" :foreground "forest green" :weight bold)
+                    ("MEETING" :foreground "forest green" :weight bold)
+                    ("PHONE" :foreground "forest green" :weight bold))))
+
+      (setq org-todo-keywords
+            (quote ((sequence "TODO(t)" "NEXT(n)" "SOMEDAY(s)" "|" "PROJECT(r)" "DONE(d)")
+                    (sequence "WAITING(w@/!)" "HOLD(h@/!)" "|" "CANCELLED(c@/!)" "PHONE(p)" "MEETING(m)"))))
+
+      (setq org-todo-keyword-faces
+            (quote (("TODO" :foreground "red" :weight bold)
+                    ("NEXT" :foreground "light green" :weight bold)
+                    ("SOMEDAY" :foreground "gold" :weight bold)
+                    ("PROJECT" :foreground "purple" :weight bold)
+                    ("DONE" :foreground "forest green" :weight bold)
+                    ("WAITING" :foreground "orange" :weight bold)
+                    ("HOLD" :foreground "magenta" :weight bold)
+                    ("CANCELLED" :foreground "forest green" :weight bold)
+                    ("MEETING" :foreground "forest green" :weight bold)
+                    ("PHONE" :foreground "forest green" :weight bold))))
 
 
-     `(org-agenda-done ((,class (:background nil :height 1.0))))
-     `(org-scheduled-today ((,class (:background nil :height 1.0))))
-     `(org-scheduled-previously ((,class (:background nil :height 1.0))))
-     ))
+      ;; Override themes which set weird headline properties.
 
-  ;; Advice
+      (let ((class '((class color) (min-colors 89))))
+        (custom-set-faces
+         `(org-level-1 ((,class (:background nil :overline nil :height 1.0))))
+         `(org-level-2 ((,class (:background nil :height 1.0))))
+         `(org-level-3 ((,class (:background nil :height 1.0))))
+         `(org-level-4 ((,class (:background nil :height 1.0))))
+         `(org-level-5 ((,class (:background nil :height 1.0))))
+         `(org-level-6 ((,class (:background nil :height 1.0))))
+         `(org-level-7 ((,class (:background nil :height 1.0))))
+         `(org-level-8 ((,class (:background nil :height 1.0))))
 
-  (defadvice org-add-log-note (before exit-minibuffer activate)
-    "If the minibuffer is active, exit before prompting for a note."
+
+         `(org-agenda-done ((,class (:background nil :height 1.0))))
+         `(org-scheduled-today ((,class (:background nil :height 1.0))))
+         `(org-scheduled-previously ((,class (:background nil :height 1.0))))
+         ))
+      >>>>>>> variant B
+      (defun cb-org/fold-all ()
+        (interactive)
+        (org-cycle '(16)))
+
+      (add-hook 'org-mode-hook #'auto-revert-mode)
+      (add-hook 'org-mode-hook #'abbrev-mode)
+
+      (add-to-list 'org-refile-targets '(nil :maxlevel . 3))
+      (add-to-list 'org-refile-targets '(org-default-notes-file :maxlevel . 3))
+      (add-to-list 'org-refile-targets '(cb-org-work-file :maxlevel . 3))
+      (add-to-list 'org-tags-exclude-from-inheritance "project")
+
+      (setq org-M-RET-may-split-line nil)
+      (setq org-attach-directory (f-join (cb-org-directory) "data"))
+      (setq org-catch-invisible-edits 'smart)
+      (setq org-clock-persist-file (f-join (cb-org-directory) ".org-clock-save"))
+      (setq org-completion-use-ido t)
+      (setq org-cycle-separator-lines 1)
+      (setq org-enforce-todo-dependencies t)
+      (setq org-footnote-auto-adjust t)
+      (setq org-id-locations-file (f-join spacemacs-cache-directory "org-id-locations"))
+      (setq org-indirect-buffer-display 'current-window)
+      (setq org-insert-heading-respect-content t)
+      (setq org-link-abbrev-alist '(("att" . org-attach-expand-link)))
+      (setq org-log-done 'time)
+      (setq org-log-into-drawer t)
+      (setq org-hide-emphasis-markers t)
+      (setq org-outline-path-complete-in-steps nil)
+      (setq org-pretty-entities t)
+      (setq org-refile-allow-creating-parent-nodes 'confirm)
+      (setq org-refile-target-verify-function (lambda () (not (member (nth 2 (org-heading-components)) org-done-keywords))))
+
+      (setq org-refile-use-outline-path t)
+      (setq org-return-follows-link t)
+      (setq org-reverse-note-order nil)
+      (setq org-confirm-elisp-link-function nil)
+      (setq org-startup-indented t)
+      (setq org-startup-with-inline-images t)
+
+      ;; Match projects that do not have a scheduled action or NEXT action.
+      (setq org-stuck-projects '("+project-ignore-maybe-done"
+                                 ("NEXT") nil
+                                 "SCHEDULED:"))
+
+
+      (setq org-hierarchical-todo-statistics nil)
+      (setq org-checkbox-hierarchical-statistics t)
+      (setq org-log-repeat nil)
+      (setq org-blank-before-new-entry '((heading . always) (plain-list-item . nil)))
+
+      (setq org-todo-keywords '((type "MAYBE(m)" "TODO(t)" "NEXT(n)" "WAITING(w!)" "|" "DONE(d!)" "CANCELLED(c!)")
+                                (type "SOMEDAY(s)" "|")))
+
+      ;; Faces
+
+      (setq org-todo-keyword-faces
+            `(("NEXT" . ,cb-vars-solarized-hl-yellow)
+              ("WAITING" . ,cb-vars-solarized-hl-magenta)))
+
+      (custom-set-faces
+       '(org-hide ((t :background unspecified)))
+       '(org-meta-line ((t :italic nil :inherit font-lock-comment-face)))
+       '(org-document-info-keyword ((t :foreground unspecified :inherit org-meta-line)))
+
+       `(org-block-begin-line
+         ((((background light)) :italic t :foreground ,cb-vars-solarized-hl-cyan :background nil)
+          (((background dark))  :italic t :foreground ,cb-vars-solarized-hl-cyan :background nil)))
+       `(org-block-end-line
+         ((((background light)) :italic t :foreground ,cb-vars-solarized-hl-cyan :background nil)
+          (((background dark))  :italic t :foreground ,cb-vars-solarized-hl-cyan :background nil)))
+       '(org-block
+         ((((background light)) :background nil)
+          (((background dark))  :background nil)))
+       '(org-block-background
+         ((((background light)) :background nil)
+          (((background dark))  :background nil))))
+
+      ;; Override themes which set weird headline properties.
+
+      (let ((class '((class color) (min-colors 89))))
+        (custom-set-faces
+         `(org-level-1 ((,class (:background nil :overline nil :height 1.0))))
+         `(org-level-2 ((,class (:background nil :height 1.0))))
+         `(org-level-3 ((,class (:background nil :height 1.0))))
+         `(org-level-4 ((,class (:background nil :height 1.0))))
+         `(org-level-5 ((,class (:background nil :height 1.0))))
+         `(org-level-6 ((,class (:background nil :height 1.0))))
+         `(org-level-7 ((,class (:background nil :height 1.0))))
+         `(org-level-8 ((,class (:background nil :height 1.0))))
+
+         `(org-agenda-done ((,class (:background nil :height 1.0))))
+         `(org-scheduled-today ((,class (:background nil :height 1.0))))
+         `(org-scheduled-previously ((,class (:background nil :height 1.0))))))))
+  ======= end
+
+  ;; Exit minibuffer before adding notes.
+
+  (defun cb-org/ad-exit-minibuffer (&rest _)
     (when (minibufferp (window-buffer (selected-window)))
       (other-window 1)))
 
-  (defadvice org-insert-heading (after insert-state activate)
-    (when (called-interactively-p nil)
-      (evil-insert-state)))
+  (advice-add 'org-add-log-note :before #'cb-org/ad-exit-minibuffer)
 
-  (defadvice org-insert-heading-respect-content (after insert-state activate)
-    (when (called-interactively-p nil)
-      (evil-insert-state)))
+  ;; Prevent point from moving to BOL when toggling headings.
 
-  (defadvice org-insert-todo-heading (after insert-state activate)
-    (when (called-interactively-p nil)
-      (evil-insert-state)))
-
-  (defadvice org-insert-todo-heading-respect-content (after insert-state activate)
-    (when (called-interactively-p nil)
-      (evil-insert-state)))
-
-  (defadvice org-toggle-heading (after goto-line-end activate)
-    "Prevent point from being moved to the line beginning."
-    (when (s-matches? (rx bol (+ "*") (* space) eol) (cb-buffers-current-line))
+  (defun cb-org/ad-toggle-heading-goto-eol (&rest _)
+    (when (s-matches? (rx bol (+ "*") (* space) eol)
+                      (buffer-substring (line-beginning-position) (line-end-position)))
       (goto-char (line-end-position))))
 
+  (advice-add 'org-toggle-heading :after #'cb-org/ad-toggle-heading-goto-eol)
 
   ;; Hooks
 
@@ -301,53 +391,76 @@ Do not scheduled items or repeating todos."
       (org-toggle-latex-fragment)
       t))
 
-  (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/latex-preview-fragment-at-pt t)
+  (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/latex-preview-fragment-at-pt t))
 
-  ;;; Keybindings
-
-  (spacemacs/declare-prefix "o" "org")
-  (spacemacs/set-leader-keys "oa" #'cb-org/show-agenda)
-  (spacemacs/set-leader-keys "ob" #'org-iswitchb)
-  (spacemacs/set-leader-keys "oc" #'org-clock-goto)
-  (spacemacs/set-leader-keys "od" #'cb-org/goto-diary)
-  (spacemacs/set-leader-keys "ok" #'org-capture)
-  (spacemacs/set-leader-keys "os" #'org-search-view)
-  (spacemacs/set-leader-keys "on" #'cb-org/goto-notes)
-  (spacemacs/set-leader-keys "ow" #'cb-org/goto-work)
-  (spacemacs/set-leader-keys "ot" #'cb-org/todo-list)
-  (spacemacs/set-leader-keys "ov" #'cb-org/tags-list)
-
+(use-package flyspell
+  :defer t
+  :config
   ;; HACK: Override clashing keybinding
-  (with-eval-after-load 'flyspell
-    (define-key flyspell-mode-map (kbd "C-c $") nil))
+  (define-key flyspell-mode-map (kbd "C-c $") nil))
 
-  (spacemacs/set-leader-keys "oh" #'helm-org-agenda-files-headings)
-  (spacemacs/set-leader-keys-for-major-mode 'org-mode "mP" #'org-plot/gnuplot)
-
-  (with-eval-after-load 'org
-    (define-key org-mode-map (kbd "C-c C-.") #'org-time-stamp-inactive)
-    (define-key org-mode-map (kbd "M-p")     #'org-metaup)
-    (define-key org-mode-map (kbd "M-n")     #'org-metadown)
-    (define-key org-mode-map (kbd "C-c c")   #'org-columns)
-    (define-key org-mode-map (kbd "C-c C-k") #'cb-org/ctrl-c-ctrl-k)
-    (define-key org-mode-map (kbd "C-c RET") #'cb-org/ctrl-c-ret)
-    (define-key org-mode-map (kbd "C-c ;")   nil)
-    (define-key org-mode-map (kbd "M-C-g")   #'org-plot/gnuplot)
-
-    (evil-define-key 'normal org-mode-map (kbd "RET") #'org-return))
-
-  ;; Remove ahs keys that override org keybindings
-  (with-eval-after-load 'auto-highlight-symbol
+(use-package auto-highlight-symbol
+  :defer t
+  :config
+  (progn
+    ;; Remove ahs keys that override org keybindings
     (define-key auto-highlight-symbol-mode-map (kbd "M-<left>") nil)
     (define-key auto-highlight-symbol-mode-map (kbd "M-<right>") nil)
     (define-key auto-highlight-symbol-mode-map (kbd "M-S-<left>") nil)
     (define-key auto-highlight-symbol-mode-map (kbd "M-S-<right>") nil)))
 
-(defun cb-org/init-org-drill-table ()
-  (use-package org-drill-table
+
+(use-package evil
+  :config
+  (progn
+    ;; Enter evil insert state when creating new headings.
+
+    (defun cb-org/ad-evil-insert-state (&rest _)
+      (when (called-interactively-p nil)
+        (evil-insert-state)))
+
+    (advice-add 'org-insert-heading :after #'cb-org/ad-evil-insert-state)
+    (advice-add 'org-insert-heading-respect-content :after #'cb-org/ad-evil-insert-state)
+    (advice-add 'org-insert-todo-heading-respect-content :after #'cb-org/ad-evil-insert-state)
+    (advice-add 'org-insert-todo-heading :after #'cb-org/ad-evil-insert-state)
+
+    ;; Add a blank line of padding below new headings.
+
+    (defun cb-org/ad-blank-line-after-heading (&rest _)
+      (when (and (called-interactively-p nil)
+                 (org-at-heading-p))
+        (let ((next-line-blank?
+               (save-excursion
+                 (forward-line)
+                 (s-blank? (buffer-substring (line-beginning-position) (line-end-position))))))
+          (unless next-line-blank?
+            (save-excursion
+              (goto-char (line-end-position))
+              (open-line 1))))))
+
+    (advice-add 'org-insert-heading :after #'cb-org/ad-blank-line-after-heading)
+    (advice-add 'org-insert-heading-respect-content :after #'cb-org/ad-blank-line-after-heading)
+    (advice-add 'org-insert-todo-heading-respect-content :after #'cb-org/ad-blank-line-after-heading)
+    (advice-add 'org-insert-todo-heading :after #'cb-org/ad-blank-line-after-heading)))
+
+(defun cb-org/post-init-org-present ()
+  (use-package org-present
     :after org
     :config
-    (add-hook 'org-ctrl-c-ctrl-c-hook #'org-drill-table-update)))
+    (progn
+      (setq org-present-text-scale 4)
+
+      ;; Disable flyspell during presentations.
+      (defvar-local cb-org/use-flyspell? nil)
+      (defun cb-org/set-use-flyspell () (setq cb-org/use-flyspell? t))
+      (defun cb-org/maybe-reenable-flyspell () (when cb-org/use-flyspell? (flyspell-mode +1)))
+
+      (add-hook 'flyspell-mode-hook #'cb-org/set-use-flyspell)
+      (add-hook 'org-present-mode-hook #'turn-off-flyspell)
+      (add-hook 'org-present-mode-quit-hook #'cb-org/maybe-reenable-flyspell)
+
+      (add-hook 'org-present-mode-hook #'spacemacs/toggle-mode-line-on)
+      (add-hook 'org-present-mode-quit-hook #'spacemacs/toggle-mode-line-off))))
 
 (defun cb-org/post-init-gnuplot ()
   (use-package gnuplot
@@ -358,10 +471,15 @@ Do not scheduled items or repeating todos."
       (setq gnuplot-inline-image-mode 'dedicated)
       (add-hook 'gnuplot-mode-hook #'page-break-lines-mode)
 
-      (defadvice org-plot/gnuplot (around display-buffer activate)
-        (ignore-errors ad-do-it)
+      ;; Show the gnuplot buffer after rendering.
+
+      (defun cb-org/ad-gnuplot-display-buffer (fn &rest _)
+        (ignore-errors
+          (funcall fn))
         (-when-let (buf (get-buffer gnuplot-image-buffer-name))
-          (display-buffer buf))))))
+          (display-buffer buf)))
+
+      (advice-add 'org-plot/gnuplot :around #'cb-org/ad-gnuplot-display-buffer))))
 
 (defun cb-org/init-cb-org-latex-preview-retina ()
   (use-package cb-org-latex-preview-retina
@@ -369,103 +487,123 @@ Do not scheduled items or repeating todos."
 
 (use-package org-agenda
   :after org
+  :bind (:map org-agenda-mode-map ("J" . org-agenda-goto-date))
   :config
   (progn
-    (define-key org-agenda-mode-map (kbd "C-f") 'evil-scroll-page-down)
-    (define-key org-agenda-mode-map (kbd "C-b") 'evil-scroll-page-up)
+    (define-key org-agenda-mode-map (kbd "C-f" ) #'evil-scroll-page-down)
+    (define-key org-agenda-mode-map (kbd "C-b") #'evil-scroll-page-up)
 
     (defun cb-org/exclude-tasks-on-hold (tag)
       (and (equal tag "hold") (concat "-" tag)))
 
     (setq org-agenda-include-diary nil)
     (setq org-agenda-start-on-weekday nil)
-    (setq org-agenda-auto-exclude-function 'cb-org/exclude-tasks-on-hold)
-    (setq org-agenda-files (f-files org-agenda-directory (lambda (f) (f-ext? f "org"))))
-    (setq org-agenda-diary-file (f-join org-directory "agenda/diary.org"))
-    (setq org-agenda-hide-tags-regexp (rx (or "noexport" "someday")))
+    (setq org-agenda-auto-exclude-function #'cb-org/exclude-tasks-on-hold)
+    (setq org-agenda-files (f-files (cb-org-directory) (lambda (f) (f-ext? f "org"))))
+    (setq org-agenda-diary-file (f-join (cb-org-directory) "diary.org"))
+    (setq org-agenda-hide-tags-regexp (rx (or "noexport" "someday" "project")))
     (setq org-agenda-insert-diary-extract-time t)
-    (setq org-agenda-span 'week)
-    (setq org-agenda-search-view-always-boolean t)
-    (setq org-agenda-show-all-dates nil)
-    (setq org-agenda-show-inherited-tags nil)
-    (setq org-agenda-skip-deadline-if-done t)
-    (setq org-agenda-skip-deadline-prewarning-if-scheduled t)
-    (setq org-agenda-skip-scheduled-if-done t)
-    (setq org-agenda-sorting-strategy
-          '((agenda time-up priority-down category-keep)
-            (todo priority-down category-keep scheduled-up)
-            (tags priority-down category-keep)
-            (search category-keep)))
-    (setq org-agenda-text-search-extra-files '(agenda-archives))
-    (setq org-agenda-use-time-grid nil)
+(setq org-agenda-span 'week)
+(setq org-agenda-search-view-always-boolean t)
+(setq org-agenda-show-all-dates nil)
+(setq org-agenda-show-inherited-tags nil)
+(setq org-agenda-skip-deadline-if-done t)
+(setq org-agenda-skip-deadline-prewarning-if-scheduled t)
+(setq org-agenda-skip-scheduled-if-done t)
+(setq org-agenda-sorting-strategy
+      '((agenda time-up priority-down category-keep)
+        (todo priority-down category-keep scheduled-up)
+        (tags priority-down category-keep)
+        (search category-keep)))
+(setq org-agenda-text-search-extra-files '(agenda-archives))
+(setq org-agenda-use-time-grid nil)
+(setq org-agenda-inhibit-startup t)
+(setq org-agenda-tags-column -100)
 
-    (setq org-agenda-clockreport-parameter-plist
-          (list
-           :compact t
-           :maxlevel 5
-           :fileskip0 t
-           :step 'week))
+(setq org-agenda-clockreport-parameter-plist
+      (list
+       :compact t
+       :maxlevel 5
+       :fileskip0 t
+       :step 'week))
 
-    (setq org-time-clocksum-format
-          (list :hours "%d" :require-hours t
-                :minutes ":%02d" :require-minutes t))
+(setq org-time-clocksum-format
+      (list :hours "%d" :require-hours t
+            :minutes ":%02d" :require-minutes t))
 
-    (setq org-agenda-custom-commands
-          ;; Useful reading: http://orgmode.org/manual/Matching-tags-and-properties.html
-          '(("A" "Agenda and next actions"
-             ((tags-todo "-study-someday-media/NEXT"
-                         ((org-agenda-overriding-header "Next Actions")))
-              (agenda "")
-              (todo "WAITING"
-                    ((org-agenda-overriding-header "Waiting")))
-              (stuck "")
-              (tags-todo "media|study/NEXT"
-                         ((org-agenda-overriding-header "MEDIA & Study"))))
-             ((org-agenda-tag-filter-preset '( "-ignore"))))
+(setq appt-message-warning-time 60)
+(setq appt-display-interval 5)
 
-            ("n" "Next actions"
-             ((tags-todo "-study-someday/NEXT"))
-             ((org-agenda-overriding-header "Next Actions")))
+(add-hook 'org-finalize-agenda-hook #'org-agenda-to-appt)
 
-            ("r" "Weekly Review"
-             ((agenda ""
-                      ((org-agenda-overriding-header "Review Previous Week")
-                       (org-agenda-ndays 7)
-                       (org-agenda-start-day "-7d")
-                       (org-agenda-show-log t)))
-              (agenda ""
-                      ((org-agenda-overriding-header "Review Upcoming Events")
-                       (org-agenda-ndays 14)))
-              (stuck ""
-                     ((org-agenda-overriding-header "Review Stuck Projects")))
-              (todo "WAITING"
-                    ((org-agenda-overriding-header "Review Tasks on Hold")))
+(setq org-agenda-custom-commands
+      ;; Useful reading: http://orgmode.org/manual/Matching-tags-and-properties.html
+      '(("A" "Agenda and next actions"
+         ((tags-todo "-study-someday-media/NEXT"
+                     ((org-agenda-overriding-header "Next Actions")))
+          (agenda "")
+          (todo "WAITING"
+                ((org-agenda-overriding-header "Waiting")))
+          (stuck "")
+          (tags-todo "media|study/NEXT"
+                     ((org-agenda-overriding-header "MEDIA & Study"))))
+         ((org-agenda-tag-filter-preset '("-ignore"))
+          (org-agenda-files (list org-default-notes-file org-agenda-diary-file))
+          (org-agenda-dim-blocked-tasks nil)
+          (org-agenda-archives-mode nil)
+          (org-agenda-ignore-drawer-properties '(effort appt))))
 
-              (tags-todo "-@work-someday-media/NEXT"
-                         ((org-agenda-overriding-header "Next Actions")))
-              (tags-todo "-@work+goals+3_months/PROJECT|NEXT"
-                         ((org-agenda-overriding-header "Review 3 Month Goals")))
-              (tags-todo "-@work+goals+1_year/PROJECT|NEXT"
-                         ((org-agenda-overriding-header "Review 1 Year Goals")))
-              (tags-todo "-@work+goals+3_years/MAYBE|SOMEDAY|PROJECT|NEXT"
-                         ((org-agenda-overriding-header "Review 3 Year Goals")))
-              (tags-todo "someday-skill/MAYBE|NEXT"
-                         ((org-agenda-overriding-header "Decide whether to promote any SOMEDAY items to NEXT actions")))
-              (tags-todo "someday&skill"
-                         ((org-agenda-overriding-header "Decide whether to promote any learning tasks to NEXT actions"))))
-             ((org-agenda-tag-filter-preset
-               '("-drill" "-gtd" "-ignore"))
-              (org-agenda-include-inactive-timestamps t)
-              (org-agenda-dim-blocked-tasks nil)))))
+        ("n" "Next actions"
+         ((tags-todo "-study-someday/NEXT"))
+         ((org-agenda-overriding-header "Next Actions")))
 
-    (define-key org-agenda-mode-map (kbd "J") 'org-agenda-goto-date)
+        ("r" "Weekly Review"
+         ((agenda ""
+                  ((org-agenda-overriding-header "Review Previous Week")
+                   (org-agenda-ndays 7)
+                   (org-agenda-start-day "-7d")))
+          (agenda ""
+                  ((org-agenda-overriding-header "Review Upcoming Events")
+                   (org-agenda-ndays 14)))
+          (stuck ""
+                 ((org-agenda-overriding-header "Review Stuck Projects")))
+          (todo "WAITING"
+                ((org-agenda-overriding-header "Review Tasks on Hold")))
 
-    (setq appt-message-warning-time 60)
-    (setq appt-display-interval 5)
+          (tags-todo "-someday-media/NEXT"
+                     ((org-agenda-overriding-header "Next Actions")))
+          (tags-todo "+goals+3_months+project/NEXT"
+                     ((org-agenda-overriding-header "Review 3 Month Goals")))
+          (tags-todo "+goals+1_year+project/NEXT"
+                     ((org-agenda-overriding-header "Review 1 Year Goals")))
+          (tags-todo "+goals+3_years+project/MAYBE|SOMEDAY|NEXT"
+                     ((org-agenda-overriding-header "Review 3 Year Goals")))
+          (tags-todo "someday-skill/MAYBE|NEXT"
+                     ((org-agenda-overriding-header "Decide whether to promote any SOMEDAY items to NEXT actions")))
+          (tags-todo "someday&skill"
+                     ((org-agenda-overriding-header "Decide whether to promote any learning tasks to NEXT actions"))))
+         ((org-agenda-tag-filter-preset
+           '("-drill" "-gtd" "-ignore"))
+          (org-agenda-include-inactive-timestamps t)
+          (org-agenda-files (list org-default-notes-file cb-org-work-file org-agenda-diary-file))
+          (org-agenda-archives-mode nil)
+          (org-agenda-dim-blocked-tasks nil)))
 
-    (add-hook 'org-finalize-agenda-hook #'org-agenda-to-appt)
-    (add-hook 'org-mode-hook #'visual-line-mode)
-    (add-hook 'org-mode-hook #'turn-off-auto-fill)))
+        ("w" "Work actions"
+         ((tags-todo "-study-someday-media/NEXT"
+                     ((org-agenda-overriding-header "Next Actions")))
+          (todo "WAITING"
+                ((org-agenda-overriding-header "Waiting")))
+          (stuck "")
+          (agenda "")
+          (tags "+standup"
+                ((org-agenda-overriding-header "Standup"))))
+         ((org-agenda-tag-filter-preset '("-ignore"))
+          (org-agenda-use-tag-inheritance nil)
+          (org-agenda-files (list cb-org-work-file org-agenda-diary-file))
+          (org-agenda-dim-blocked-tasks nil)
+          (org-agenda-archives-mode nil)
+          (org-agenda-ignore-drawer-properties '(effort appt))))))))
 
 (use-package org-indent
   :after org
@@ -488,26 +626,12 @@ Do not scheduled items or repeating todos."
 
     (setq org-archive-default-command 'cb-org/archive-done-tasks)
 
-    (defadvice org-archive-subtree (before apply-inherited-tags activate)
-      (org-set-tags-to (org-get-tags-at)))))
+    ;; Apply inherited tags when archiving.
 
-(use-package org-table
-  :after org
-  :config
-  (progn
+    (defun cb-org/ad-apply-inherited-tags (&rest _)
+      (org-set-tags-to (org-get-tags-at)))
 
-    (defun cb-org/recalculate-whole-table ()
-      "Recalculate the current table using `org-table-recalculate'."
-      (interactive "*")
-      (when (org-at-table-p)
-        (let ((before (buffer-substring (org-table-begin) (org-table-end))))
-          (org-table-recalculate '(16))
-          (let ((after (buffer-substring (org-table-begin) (org-table-end))))
-            (if (equal before after)
-                (message "Table up-to-date")
-              (message "Table updated"))))))
-
-    (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/recalculate-whole-table)))
+    (advice-add 'org-archive-subtree :before #'cb-org/ad-apply-inherited-tags)))
 
 (use-package org-src
   :after org
@@ -515,68 +639,24 @@ Do not scheduled items or repeating todos."
   (progn
     (setq org-src-fontify-natively t)
 
-    (defvar org-edit-src-before-exit-hook nil
-      "Hook run before exiting a code block.")
+    ;; Remove trailing newline in src blocks.
 
-    (defadvice org-edit-src-exit (before run-hook activate)
-      "Run a hook when exiting src block."
-      (run-hooks 'org-edit-src-before-exit-hook))
+    (defun cb-org/suppress-final-newline ()
+      (setq-local require-final-newline nil))
 
-    (add-hook 'org-edit-src-before-exit-hook #'delete-trailing-whitespace)
-    (add-hook 'org-src-mode-hook
-              (lambda () (setq-local require-final-newline nil)))))
+    (add-hook 'org-src-mode-hook #'cb-org/suppress-final-newline)
+
+    ;; Delete trailing whitespace when exiting src blocks.
+
+    (defun cb-org/ad-org-src-delete-trailing-space (&rest _)
+      (delete-trailing-whitespace))
+
+    (advice-add 'org-edit-src-exit :before #'cb-org/ad-org-src-delete-trailing-space)))
 
 (use-package org-clock
   :after org
   :config
   (progn
-
-    (defun cb-org/project? ()
-      "Any task with a todo keyword subtask"
-      (save-restriction
-        (widen)
-        (let ((has-subtask)
-              (subtree-end (save-excursion (org-end-of-subtree t)))
-              (is-a-task (member (nth 2 (org-heading-components)) org-todo-keywords-1)))
-          (save-excursion
-            (forward-line 1)
-            (while (and (not has-subtask)
-                        (< (point) subtree-end)
-                        (re-search-forward "^\*+ " subtree-end t))
-              (when (member (org-get-todo-state) org-todo-keywords-1)
-                (setq has-subtask t))))
-          (and is-a-task has-subtask))))
-
-    (defun cb-org/task? ()
-      "Any task with a todo keyword and no subtask"
-      (save-restriction
-        (widen)
-        (let ((has-subtask)
-              (subtree-end (save-excursion (org-end-of-subtree t)))
-              (is-a-task (member (nth 2 (org-heading-components)) org-todo-keywords-1)))
-          (save-excursion
-            (forward-line 1)
-            (while (and (not has-subtask)
-                        (< (point) subtree-end)
-                        (re-search-forward "^\*+ " subtree-end t))
-              (when (member (org-get-todo-state) org-todo-keywords-1)
-                (setq has-subtask t))))
-          (and is-a-task (not has-subtask)))))
-
-    (defun cb-org/clock-in-to-next-state (_kw)
-      "Move a task from TODO to NEXT when clocking in.
-Skips capture tasks, projects, and subprojects.
-Switch projects and subprojects from NEXT back to TODO."
-      (unless (and (boundp 'org-capture-mode) org-capture-mode)
-        (cond
-         ((and (-contains? '("TODO") (org-get-todo-state))
-               (cb-org/task?))
-          "NEXT")
-         ((and (-contains? '("NEXT") (org-get-todo-state))
-               (cb-org/project?))
-          "TODO"))))
-
-    (setq org-clock-in-switch-to-state 'cb-org/clock-in-to-next-state)
     (setq org-clock-persist t)
     (setq org-clock-persist-query-resume nil)
     (setq org-clock-history-length 20)
@@ -598,32 +678,12 @@ Switch projects and subprojects from NEXT back to TODO."
   :after org
   :config
   (progn
-
-    (defun cb-org/looking-at-pgp-section?? ()
-      (unless (org-before-first-heading-p)
-        (save-excursion
-          (org-back-to-heading t)
-          (let ((heading-point (point))
-                (heading-was-invisible-p
-                 (save-excursion
-                   (outline-end-of-heading)
-                   (outline-invisible-p))))
-            (forward-line)
-            (looking-at "-----BEGIN PGP MESSAGE-----")))))
-
-    (defun cb-org/decrypt-entry ()
-      (when (cb-org/looking-at-pgp-section??)
-        (org-decrypt-entry)
-        t))
-
-    (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/decrypt-entry)
-
     (setq org-crypt-disable-auto-save 'encypt)
     (org-crypt-use-before-save-magic)
     (add-to-list 'org-tags-exclude-from-inheritance "crypt")))
 
 (use-package org-drill
-  :after org
+  :after (org cb-org-directory)
   :commands (org-drill
              org-drill-strip-all-data
              org-drill-cram
@@ -635,17 +695,27 @@ Switch projects and subprojects from NEXT back to TODO."
              org-drill-again)
   :config
   (progn
-    (setq org-drill-save-buffers-after-drill-sessions-p nil)
-    (defadvice org-drill (after save-buffers activate)
-      (org-save-all-org-buffers))))
+    (defconst cb-org-drill-file (f-join (cb-org-directory) "drill" "drill.org"))
+
+    (defun cb-org/org-drill-files ()
+      (f-files (f-join (cb-org-directory) "drill")))
+
+    (setq org-drill-scope (cb-org/org-drill-files))
+
+    (add-to-list 'org-refile-targets '(cb-org/org-drill-files :maxlevel . 3))
+
+    (setq org-drill-learn-fraction 0.25)
+    (setq org-drill-adjust-intervals-for-early-and-late-repetitions-p t)
+    (setq org-drill-add-random-noise-to-intervals-p t)
+    (setq org-drill-save-buffers-after-drill-sessions-p nil)))
 
 (use-package ox
   :after org
-  :init
-  (setq org-export-backends '(ascii html latex md koma-letter))
   :config
   (progn
+    (setq org-export-backends '(ascii html latex gfm koma-letter odt))
     (setq org-export-exclude-tags '("noexport" "crypt"))
+    (setq org-export-coding-system 'utf-8)
     (setq org-html-html5-fancy t)
     (setq org-html-postamble nil)
     (setq org-html-table-row-tags
@@ -672,91 +742,17 @@ table tr.tr-even td {
 </style>
 ")))
 
-(use-package ox-texinfo
-  :after org
-  :config
-  (progn
-
-    (defun cb-org-export/koma-letter-at-subtree (dest)
-      "Define a command to export the koma letter subtree at point to PDF.
-With a prefix arg, prompt for the output destination. Otherwise
-generate use the name of the current file to generate the
-exported file's name. The PDF will be created at DEST."
-      (interactive
-       (list (if current-prefix-arg
-                 (ido-read-file-name "Destination: " nil nil nil ".pdf")
-               (concat (f-no-ext (buffer-file-name)) ".pdf"))))
-
-      (let ((tmpfile (make-temp-file "org-export-" nil ".org")))
-        (cb-org-write-subtree-content tmpfile)
-        (with-current-buffer (find-file-noselect tmpfile)
-          (unwind-protect
-              (-if-let (exported (org-koma-letter-export-to-pdf))
-                  (f-move exported dest)
-                (error "Export failed"))
-            (kill-buffer)))
-        (async-shell-command (format "open %s" (shell-quote-argument dest)))
-        (message "opening %s..." dest)))
-
-    (defun cb-org/C-c-C-c-export-koma-letter ()
-      "Export the koma letter at point."
-      (when (ignore-errors
-              (s-matches? (rx "latex_class:" (* space) "koma")
-                          (cb-org-subtree-content)))
-        (call-interactively 'org-export-koma-letter-at-subtree)
-        'export-koma-letter))
-
-    (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/C-c-C-c-export-koma-letter t)
-
-    (add-to-list 'org-latex-classes '("koma-letter" "
-\\documentclass[paper=A4,pagesize,fromalign=right,
-               fromrule=aftername,fromphone,fromemail,
-               version=last]{scrlttr2}
-\\usepackage[english]{babel}
-\\usepackage[utf8]{inputenc}
-\\usepackage[normalem]{ulem}
-\\usepackage{booktabs}
-\\usepackage{graphicx}
-[NO-DEFAULT-PACKAGES]
-[EXTRA]
-[PACKAGES]"))))
-
 (use-package org-capture
   :after org
   :config
   (progn
-
-    (defun cb-org/parse-html-title (html)
-      "Extract the title from an HTML document."
-      (-let (((_ title) (s-match (rx "<title>" (group (* nonl)) "</title>") html))
-             ((_ charset) (-map 'intern (s-match (rx "charset=" (group (+ (any "-" alnum)))) html))))
-        (if (-contains? coding-system-list charset)
-            (decode-coding-string title charset)
-          title)))
-
-    (defun cb-org/url-retrieve-html (url)
-      "Download the resource at URL and attempt to extract an HTML title."
-      (unless (s-matches? (rx "." (or "pdf" "mov" "mp4" "m4v" "aiff" "wav" "mp3") eol) url)
-        (with-current-buffer (url-retrieve-synchronously url t)
-          (buffer-string))))
-
-    (defun cb-org/last-url-kill ()
-      "Return the most recent URL in the kill ring or X pasteboard."
-      (--first (s-matches? (rx bos (or "http" "https" "www")) it)
-               (cons (current-kill 0 t) kill-ring)))
-
-    (defun cb-org/read-string-with-default (prompt default &optional initial-input history)
-      "Read a string from the user with a default value added to the prompt."
-      (read-string (concat (if default (format "%s (default %s)" prompt default) prompt) ": ")
-                   initial-input history default))
-
-    (defun cb-org/read-url-for-capture ()
-      "Return a capture template string for a URL org-capture."
-      (let* ((url (cb-org/read-string-with-default "URL" (or
-                                                          (thing-at-point-url-at-point)
-                                                          (cb-org/last-url-kill))))
-             (title (cb-org/parse-html-title (cb-org/url-retrieve-html url))))
-        (format "* [[%s][%s]]" url (or title url))))
+    (defun cb-org/capture-template-entry (key label form template &rest kws)
+      (-concat
+       (list key label 'entry form template
+             :clock-keep t
+             :empty-lines 1
+             :prepend t)
+       kws))
 
     ;; Capture templates for: TODO tasks, Notes, appointments, phone calls, meetings, and org-protocol
     ;; Useful reading http://orgmode.org/manual/Template-expansion.html#Template-expansion
@@ -870,9 +866,75 @@ exported file's name. The PDF will be created at DEST."
             ))
     ))
 
+(use-package org-download
+  :after org
+  :config
+  (setq org-download-method 'attach))
+
 (defun cb-org/init-org-autoinsert ()
   (use-package org-autoinsert
     :functions (org-autoinsert-init)
     :config (org-autoinsert-init)))
+
+(defun cb-org/init-cb-org-clock-cascade ()
+  (use-package cb-org-clock-cascade
+    :after org
+    :config
+    (add-hook 'org-mode-hook #'cb-org-clock-cascade-init)))
+
+(defun cb-org/init-cb-org-export-koma-letter ()
+  (use-package cb-org-export-koma-letter
+    :after org
+    :config
+    (add-hook 'org-mode-hook #'cb-org-export-koma-letter-init)))
+
+(defun cb-org/init-cb-org-subtree ()
+  (use-package cb-org-subtree
+    :commands (cb-org-subtree-narrow-to-content
+               cb-org-subtree-write-content
+               cb-org-subtree-copy)))
+
+(defun cb-org/init-cb-org-pgp-decrpyt ()
+  (use-package cb-org-pgp-decrpyt
+    :after org
+    :config
+    (add-hook 'org-mode-hook #'cb-org-pgp-decrpyt-init)))
+
+(defun cb-org/init-cb-org-recalculate-whole-table ()
+  (use-package cb-org-recalculate-whole-table
+    :after org
+    :config
+    (add-hook 'org-mode-hook #'cb-org-recalculate-whole-table-init)))
+
+(defun cb-org/init-cb-org-capture-url ()
+  (use-package cb-org-capture-url
+    :after org))
+
+(defun cb-org/init-cb-org-gdrive ()
+  (use-package cb-org-gdrive
+    :after org
+    :config
+    (add-hook 'org-mode-hook #'cb-org-gdrive-init)))
+
+(defun cb-org/init-cb-org-goto ()
+  (use-package cb-org-goto
+    :after org
+    :leader-bind
+    (("oa" . cb-org-goto-agenda)
+     ("od" . cb-org-goto-diary)
+     ("on" . cb-org-goto-notes)
+     ("ow" . cb-org-goto-work)
+     ("ot" . cb-org-goto-todo-list)
+     ("ov" . cb-org-goto-tags-list))))
+
+(defun cb-org/init-cb-org-ctrl-c-ret ()
+  (use-package cb-org-ctrl-c-ret
+    :after org
+    :bind (:map org-mode-map ("C-c RET" . cb-org-ctrl-c-ret))))
+
+(defun cb-org/init-cb-org-ctrl-c-ctrl-k ()
+  (use-package cb-org-ctrl-c-ctrl-k
+    :after org
+    :bind (:map org-mode-map ("C-c C-k" . cb-org-ctrl-c-ctrl-k))))
 
 ;;; packages.el ends here

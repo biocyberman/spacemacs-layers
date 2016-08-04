@@ -3,37 +3,59 @@
 ;;; Code:
 
 (eval-when-compile
-  (require 'use-package nil t)
   (require 'skeletor nil t)
-  (require 'smartparens nil t))
+  (require 'smartparens nil t)
+  (require 'cb-use-package-extensions)
+  (require 'use-package))
 
 (defconst cb-rust-packages
   '(smart-ops
+    company
     racer
     rust-mode
+    flycheck
     skeletor
     smartparens
     aggressive-indent))
 
+(defun cb-rust/post-init-flycheck ()
+  (use-package flycheck
+    :after rust-mode
+    :config
+    (setq flycheck-rust-cargo-executable "~/.cargo/bin/cargo")))
+
+(defun cb-rust/post-init-company ()
+  (with-eval-after-load 'rust-mode
+    (use-package company
+      :bind
+      (:map rust-mode-map ("TAB" . company-indent-or-complete-common))
+      :evil-bind
+      (:map rust-mode-map
+            :state normal ("TAB" . company-indent-or-complete-common)
+            :state insert ("TAB" . company-indent-or-complete-common))
+      :config
+      (add-hook 'rust-mode-hook (lambda ()
+                                  (setq company-minimum-prefix-length 2))))))
+
 (defun cb-rust/post-init-rust-mode ()
   (use-package rust-mode
-    :config
-    (progn
+    :init
+    (defun cb-rust/join-line ()
+      "Join lines, deleting intermediate spaces for chained function calls."
+      (interactive)
+      (call-interactively #'evil-join)
+      (when (thing-at-point-looking-at (rx (not space) (* space) "."))
+        (delete-horizontal-space)))
 
-      (defun cb-rust/join-line ()
-        "Join lines, deleting intermediate spaces for chained function calls."
-        (interactive)
-        (call-interactively #'evil-join)
-        (when (thing-at-point-looking-at (rx (not space) (* space) "."))
-          (delete-horizontal-space)))
-
-      (evil-define-key 'normal rust-mode-map (kbd "J") #'cb-rust/join-line))))
+    :evil-bind
+    (:map rust-mode-map :state normal ("J" . cb-rust/join-line))))
 
 (defun cb-rust/post-init-racer ()
   (use-package racer
     :after rust-mode
-    :config
-    (evil-define-key 'normal racer-mode-map (kbd "M-.") #'racer-find-definition)))
+    :evil-bind
+    (:map racer-mode-map :state normal
+          ("M-." . racer-find-definition))))
 
 (defun cb-rust/post-init-smart-ops ()
   (add-hook 'rust-mode-hook #'smart-ops-mode)
@@ -117,12 +139,27 @@
                               (just-one-space))))))
 
     ;; Position point inside template braces.
-    (smart-op "<>"
-              :pad-before nil :pad-after nil
-              :action (lambda (&rest _)
-                        (when (smart-ops-after-match? (rx "<" (* space) ">"))
-                          (search-backward ">")
-                          (delete-horizontal-space))))
+    (smart-ops "<>" "<>>" "<>>>" "<>>>>" "<>>>>>"
+               :pad-before nil
+               :pad-after-if
+               (lambda (end)
+                 (s-matches? (rx (* space) "{")
+                             (buffer-substring end (line-end-position))))
+               :action (lambda (&rest _)
+                         (skip-chars-backward " >")))
+    (smart-ops "<," "<>," "<>>," "<>>>," "<>>>>," "<>>>>>,"
+               "<;" "<>;" "<>>;" "<>>>;" "<>>>>;" "<>>>>>;"
+               "<::" "<>::" "<>>::" "<>>>::" "<>>>>::" "<>>>>>::"
+               :pad-before nil :pad-after t
+               :action (lambda (&rest _)
+                         (skip-chars-backward " >")))
+    (smart-ops ",>," ",>>," ",>>>," ",>>>>," ",>>>>>,"
+               ",>;" ",>>;" ",>>>;" ",>>>>;" ",>>>>>;"
+               ",>::" ",>>::" ",>>>::" ",>>>>::" ",>>>>>::"
+               :pad-before nil :pad-after t
+               :action (lambda (&rest _)
+                         (skip-chars-backward " >")
+                         (just-one-space)))
 
     ;; Dereferencing
 

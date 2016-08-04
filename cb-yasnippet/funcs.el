@@ -203,7 +203,11 @@ is a Common Lisp arglist."
   (save-excursion
     (forward-line)
     (back-to-indentation)
-    (thing-at-point-looking-at (rx (* space) "(" (or "cl-defun" "defun" "defvar" "defconst")))))
+    (thing-at-point-looking-at (rx (* space) "("
+                                   (or "cl-defun" "defun" "defvar" "defconst"
+                                       "define-minor-mode"
+                                       "define-globalized-minor-mode"
+                                       "define-derived-mode")))))
 
 
 ;;; Editing commands
@@ -211,29 +215,35 @@ is a Common Lisp arglist."
 (defun yas/space ()
   "Clear and skip this field if it is unmodified.  Otherwise insert a space."
   (interactive "*")
-  (let ((field (yas/current-field)))
+  (let ((field (yas/current-field))
+        (sp-mode? (and (boundp 'smartparens-mode) smartparens-mode)))
     (cond ((and field
                 (not (yas--field-modified-p field))
                 (eq (point) (marker-position (yas--field-start field))))
            (yas--skip-and-clear field)
            (yas-next-field 1))
+          (sp-mode?
+           (sp-generic-prog-space))
           (t
-           (insert " ")))))
+           (call-interactively #'self-insert-command)))))
 
 (defun yas/backspace ()
   "Clear the current field if the current snippet is unmodified.
 Otherwise delete backwards."
   (interactive "*")
-  (let ((field (yas/current-field)))
+  (let ((field (yas/current-field))
+        (sp-mode? (and (boundp 'smartparens-mode) smartparens-mode)))
     (cond ((and field
                 (not (yas--field-modified-p field))
                 (eq (point) (marker-position (yas--field-start field))))
            (yas--skip-and-clear field)
            (yas-next-field 1))
-          ((and (boundp 'smartparens-mode) smartparens-mode)
-           (call-interactively 'sp-backward-delete-char))
+          ((and sp-mode? (derived-mode-p 'prog-mode))
+           (sp-generic-prog-backspace))
+          (sp-mode?
+           (call-interactively #'sp-backward-delete-char))
           (t
-           (call-interactively 'backward-delete-char)))))
+           (call-interactively #'backward-delete-char)))))
 
 
 ;;; Rust

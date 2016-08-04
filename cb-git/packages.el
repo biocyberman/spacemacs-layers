@@ -7,6 +7,7 @@
 
 (defconst cb-git-packages
   '(magit
+    git-commit
     vc
     git-auto-commit-mode
     (git-commit-jira-prefix :location local)
@@ -19,17 +20,30 @@
   (setenv "GIT_EDITOR" "emacsclient"))
 
 (defun cb-git/post-init-magit ()
-  ;; Remove broken Spacemacs customisation
-  (remove-hook 'git-commit-mode-hook 'fci-mode)
+  (use-package magit
+    :defer t
 
-  (core/remap-face 'magit-section-highlight 'cb-faces-bg-hl-ok)
-  (core/remap-face 'magit-diff-context-highlight 'cb-faces-bg-hl-ok)
+    :bind
+    (:map
+     magit-mode-map
+     ("SPC" . nil)
+     :map
+     magit-status-mode-map
+     ("S-SPC" . helm-M-x))
 
-  (evil-set-initial-state 'git-commit-mode 'insert)
+    :config
+    (progn
+      (cb-remap-face 'magit-section-highlight 'cb-faces-bg-hl-ok)
+      (cb-remap-face 'magit-diff-context-highlight 'cb-faces-bg-hl-ok))))
 
-  (with-eval-after-load 'magit
-    (define-key magit-mode-map (kbd "SPC") nil)
-    (define-key magit-status-mode-map (kbd "S-SPC") #'helm-M-x)))
+(defun cb-git/post-init-git-commit ()
+  (use-package git-commit
+    :after magit
+    :config
+    (progn
+      ;; Remove broken Spacemacs customisation
+      (remove-hook 'git-commit-mode-hook 'fci-mode)
+      (evil-set-initial-state 'git-commit-mode 'insert))))
 
 (defun cb-git/init-git-auto-commit-mode ()
   (use-package git-auto-commit-mode
@@ -45,7 +59,5 @@
 
 (defun cb-git/init-magit-browse-repo ()
   (use-package magit-browse-repo
-    :commands (magit-browse-repo)
-    :after (magit)
-    :config
-    (define-key magit-status-mode-map (kbd "&") #'magit-browse-repo)))
+    :after magit
+    :bind (:map magit-status-mode-map ("&" . magit-browse-repo))))

@@ -2,17 +2,19 @@
 ;;; Commentary:
 ;;; Code:
 
-;; Menu-bar looks acceptable in OS X. Otherwise it adds clutter.
-(when (fboundp 'menu-bar-mode)
-  (if (and (eq system-type 'darwin)
-           (display-graphic-p))
-      (menu-bar-mode +1)
-    (menu-bar-mode -1)))
-
 (when (boundp 'window-numbering-mode)
   (window-numbering-mode -1))
 
 (defvar spacemacs-autosaves-directory (concat user-emacs-directory "autosaves/"))
+
+;; Show file or buffer name in the title bar.
+
+(defun core/frame-title-string ()
+  (if (buffer-file-name)
+      (abbreviate-file-name (buffer-file-name))
+    (buffer-name)))
+
+(setq frame-title-format `(:eval (core/frame-title-string)))
 
 ;;; Compatibility
 
@@ -28,10 +30,6 @@
 (defalias 'qr  'query-replace)
 (defalias 'qrr 'query-replace-regexp)
 (defalias 'cal 'calendar)
-(defalias 'rfb 'cb-core-rename-file-and-buffer)
-(defalias 'rbf 'cb-core-rename-file-and-buffer)
-(defalias 'mv  'cb-core-move-file)
-
 
 ;;; Set variables
 
@@ -57,19 +55,6 @@
 (setq-default tab-width 4)
 (setq-default evil-shift-width 2)
 
-(add-hook 'compilation-filter-hook #'cb-core-ansi-colourise-compilation)
-
-;;; Colours
-
-(defconst solarized-hl-yellow    "#b58900")
-(defconst solarized-hl-orange    "#cb4b16")
-(defconst solarized-hl-red       "#dc322f")
-(defconst solarized-hl-magenta   "#d33682")
-(defconst solarized-hl-violet    "#6c71c4")
-(defconst solarized-hl-blue      "#268bd2")
-(defconst solarized-hl-cyan      "#2aa198")
-(defconst solarized-hl-green     "#859900")
-
 ;;; Customise spacemacs face.
 
 (custom-set-faces
@@ -77,42 +62,11 @@
  '(font-lock-variable-name-face ((t (:italic t))))
  '(font-lock-keyword-face ((t (:bold nil)))))
 
-;;; Compat with spacemacs' face remapping.
-
-(defvar core/face-remapping-alist face-remapping-alist
-  "Hacky work-around to prevent spacemacs from killing face remaps.")
-
-(defun core/remap-face (from to)
-  "Add a face remapping from FROM to TO.
-Work around spacemacs' aggressive manipulation of `face-remapping-alist'."
-  (add-to-list 'core/face-remapping-alist (cons from to))
-  (add-to-list 'face-remapping-alist (cons from to)))
-
-(core/remap-face 'flymake-errline 'flycheck-error)
-(core/remap-face 'flymake-warnling 'flycheck-warning)
-
-(defadvice spacemacs//ido-navigation-ms-on-exit (after restore-face-remappings activate)
-  (setq face-remapping-alist (-concat face-remapping-alist core/face-remapping-alist)))
-
-(defadvice spacemacs//ido-setup (after restore-face-remappings activate)
-  (setq face-remapping-alist (-concat face-remapping-alist core/face-remapping-alist)))
-
-(defadvice spacemacs//helm-before-initialize (after restore-face-remappings activate)
-  (setq face-remapping-alist (-concat face-remapping-alist core/face-remapping-alist)))
-
 ;;; Saving behaviour
 
 (add-hook 'after-save-hook 'executable-make-buffer-file-executable-if-script-p)
 
 ;;; Editing advice
-
-(defadvice ido-find-file (after find-file-sudo activate)
-  "Find file as root if necessary."
-  (let ((dir (f-dirname (buffer-file-name)))
-        (file (buffer-file-name)))
-    (unless (and file (f-writable? file))
-      (when (and (f-exists? dir) (not (f-writable? dir)))
-        (find-alternate-file (concat "/sudo:root@localhost:" buffer-file-name))))))
 
 (defadvice save-buffers-kill-emacs (around no-query-kill-emacs activate)
   "Do not prompt for confirmation for active processes."

@@ -7,24 +7,15 @@
 (require 'f)
 (require 's)
 
-(autoload 'appt-check "appt")
-(autoload 'org-agenda-filter-apply "org-agenda")
 (autoload 'org-at-heading-p "org")
-(autoload 'org-at-table-p "org")
 (autoload 'org-back-to-heading "org")
 (autoload 'org-clock-special-range "org-clock")
-(autoload 'org-clone-subtree-with-time-shift "org")
-(autoload 'org-content "org")
-(autoload 'org-copy-subtree "org")
-(autoload 'org-cut-subtree "org")
 (autoload 'org-dblock-write:clocktable "org-clock")
-(autoload 'org-find-exact-headline-in-buffer "org")
 (autoload 'org-float-time "org-compat")
-(autoload 'org-kill-note-or-show-branches "org")
-(autoload 'org-narrow-to-subtree "org")
 (autoload 'org-parse-time-string "org")
 (autoload 'org-time-stamp-format "org")
 
+<<<<<<< HEAD
 ;; Leader commands
 
 (defun cb-org/goto-diary ()
@@ -107,6 +98,8 @@
   )
 
 
+=======
+>>>>>>> 15bce7a3578fbfd42dde15a6678dd0ecdf6ca6eb
 ;;; Diary utils
 
 (defun calendar-nearest-to (target-dayname target-day target-month)
@@ -185,19 +178,6 @@ are between the current date (DATE) and Easter Sunday."
   (calendar-gregorian-from-absolute (+ n (calendar-easter-date year))))
 
 
-;;; Config support
-
-(defun cb-org/display-links ()
-  (interactive)
-  (let ((bufname "*Org Links*"))
-    (-if-let (buf (get-buffer bufname))
-        (display-buffer buf)
-      (with-current-buffer (find-file-noselect org-default-notes-file)
-        (-when-let (mark (save-excursion (org-find-exact-headline-in-buffer "Links")))
-          (clone-indirect-buffer bufname t)
-          (goto-char (marker-position mark))
-          (org-narrow-to-subtree)
-          (org-content))))))
 
 ;; HACK: override `org-clocktable-steps' to customise clocktable appearance.
 (with-eval-after-load 'org-clock
@@ -262,5 +242,90 @@ are between the current date (DATE) and Easter Sunday."
                            (point))))
         (end-of-line 0))))
   )
+
+;; HACK: Fix screen redraw issue that prevents org-drill from displaying
+;; content.
+;;
+;; https://bitbucket.org/eeeickythump/org-drill/issues/28/org-drill-randomly-shows-nothing
+
+(with-eval-after-load 'org
+  (defun org-toggle-latex-fragment (&optional arg)
+    "Preview the LaTeX fragment at point, or all locally or globally.
+
+If the cursor is on a LaTeX fragment, create the image and overlay
+it over the source code, if there is none.  Remove it otherwise.
+If there is no fragment at point, display all fragments in the
+current section.
+
+With prefix ARG, preview or clear image for all fragments in the
+current subtree or in the whole buffer when used before the first
+headline.  With a double prefix ARG \\[universal-argument] \
+\\[universal-argument] preview or clear images
+for all fragments in the buffer."
+    (interactive "P")
+    (unless (buffer-file-name (buffer-base-buffer))
+      (user-error "Can't preview LaTeX fragment in a non-file buffer"))
+    (when (display-graphic-p)
+      (catch 'exit
+        (save-excursion
+          (let ((window-start (window-start)) msg)
+            (save-restriction
+              (cond
+               ((or (equal arg '(16))
+                    (and (equal arg '(4))
+                         (org-with-limited-levels (org-before-first-heading-p))))
+                (if (org-remove-latex-fragment-image-overlays)
+                    (progn (message "LaTeX fragments images removed from buffer")
+                           (throw 'exit nil))
+                  (setq msg "Creating images for buffer...")))
+               ((equal arg '(4))
+                (org-with-limited-levels (org-back-to-heading t))
+                (let ((beg (point))
+                      (end (progn (org-end-of-subtree t) (point))))
+                  (if (org-remove-latex-fragment-image-overlays beg end)
+                      (progn
+                        (message "LaTeX fragment images removed from subtree")
+                        (throw 'exit nil))
+                    (setq msg "Creating images for subtree...")
+                    (narrow-to-region beg end))))
+               ((let ((datum (org-element-context)))
+                  (when (memq (org-element-type datum)
+                              '(latex-environment latex-fragment))
+                    (let* ((beg (org-element-property :begin datum))
+                           (end (org-element-property :end datum)))
+                      (if (org-remove-latex-fragment-image-overlays beg end)
+                          (progn (message "LaTeX fragment image removed")
+                                 (throw 'exit nil))
+                        (narrow-to-region beg end)
+                        (setq msg "Creating image..."))))))
+               (t
+                (org-with-limited-levels
+                 (let ((beg (if (org-at-heading-p) (line-beginning-position)
+                              (outline-previous-heading)
+                              (point)))
+                       (end (progn (outline-next-heading) (point))))
+                   (if (org-remove-latex-fragment-image-overlays beg end)
+                       (progn
+                         (message "LaTeX fragment images removed from section")
+                         (throw 'exit nil))
+                     (setq msg "Creating images for section...")
+                     (narrow-to-region beg end))))))
+              (let ((file (buffer-file-name (buffer-base-buffer))))
+                (org-format-latex
+                 (concat org-latex-preview-ltxpng-directory
+                         (file-name-sans-extension (file-name-nondirectory file)))
+                 ;; Emacs cannot overlay images from remote hosts.
+                 ;; Create it in `temporary-file-directory' instead.
+                 (if (file-remote-p file) temporary-file-directory
+                   default-directory)
+                 'overlays msg 'forbuffer
+                 org-latex-create-formula-image-program)))
+            ;; Work around a bug that doesn't restore window's start
+            ;; when widening back the buffer.
+
+            ;; HACK: commented out. See note above.
+            ;; (set-window-start nil window-start)
+
+            (message (concat msg "done"))))))))
 
 ;;; funcs.el ends here

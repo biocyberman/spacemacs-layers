@@ -30,6 +30,8 @@
 
 (defconst cb-bootstrap-packages
   '(s
+    use-package
+    evil
     dash
     dash-functional
     noflet
@@ -52,8 +54,8 @@
 
 (defconst cb-bootstrap-preload-lisp-files
   (list
+   (concat user-layers-directory "cb-use-package-extensions.el")
    (concat user-layers-directory "cb-vars.el")
-   (concat user-layers-directory "cb-core/funcs.el")
    (concat user-layers-directory "cb-core/config.el"))
   "Aggressively load these packages.  They contain utilities needed in layer definitions.")
 
@@ -75,6 +77,7 @@
     (cb-bootstrap--install-package pkg)))
 
 (defun cb-bootstrap/load-preloadable-lisp-files ()
+  (add-to-list 'load-path user-layers-directory)
   (dolist (el cb-bootstrap-preload-lisp-files)
     (load el)))
 
@@ -84,6 +87,7 @@
 
 (defun cb-bootstrap/user-config ()
   (setq custom-file (concat user-emacs-directory "custom.el"))
+  (add-to-list 'load-path (concat user-dropbox-directory "emacs/"))
   (when (file-exists-p custom-file)
     (load custom-file))
   (with-demoted-errors "Personal config: %S"

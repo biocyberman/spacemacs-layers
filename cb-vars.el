@@ -21,7 +21,16 @@
 
 ;;; Code:
 
-(defvar cb-vars-prompt-modes
+(defconst cb-vars-solarized-hl-yellow    "#b58900")
+(defconst cb-vars-solarized-hl-orange    "#cb4b16")
+(defconst cb-vars-solarized-hl-red       "#dc322f")
+(defconst cb-vars-solarized-hl-magenta   "#d33682")
+(defconst cb-vars-solarized-hl-violet    "#6c71c4")
+(defconst cb-vars-solarized-hl-blue      "#268bd2")
+(defconst cb-vars-solarized-hl-cyan      "#2aa198")
+(defconst cb-vars-solarized-hl-green     "#859900")
+
+(defconst cb-vars-prompt-modes
   '(comint-mode
     inf-ruby-mode
     inferior-python-mode
@@ -34,7 +43,7 @@
     inferior-haskell-mode
     sclang-post-buffer-mode))
 
-(defvar cb-vars-lisp-modes
+(defconst cb-vars-lisp-modes
   '(cider-repl-mode
     clojure-mode
     clojurescript-mode
@@ -57,7 +66,13 @@
     ".pyc"
     ".v.d"
     ".vo"
-    ".glob"))
+    ".glob"
+    ".min.js"
+    ".cfe"
+    ".cfs"
+    ".si"
+    ".gen"
+    ".lock"))
 
 (defconst cb-vars-ignored-files-regexps
   '("\\.elc\\'"
@@ -81,9 +96,13 @@
     "\\.org-clock-save\\.el\\'"
 
     ;; Elm
-    ".*/elm-stuff/.*"
+    "/elm-stuff/"
     "\\.elmi\\'"
-    "\\.elmo\\'"))
+    "\\.elmo\\'"
+
+    ;; JS
+    "node_modules"
+    "\\.min\\.js\\'"))
 
 (defconst cb-vars-ignored-dirs
   '(".idea"
@@ -126,11 +145,17 @@
     "project/project"
     ".ensime_cache"
 
-    ;; Elm
-    ".*/elm-stuff"
-
     ;; Org agenda files
     "org/agenda"
+
+    ;; Elm
+    "elm-stuff"
+
+    ;; JS
+    "node_modules"
+
+    ;; Rust
+    ".cargo"
     ))
 
 (provide 'cb-vars)

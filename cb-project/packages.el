@@ -2,11 +2,14 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'dash)
-(require 'hydra nil t)
-(require 's)
-(require 'f)
-(require 'use-package)
+(eval-when-compile
+  (require 'dash)
+  (require 'hydra nil t)
+  (require 's)
+  (require 'f)
+  (require 'cb-vars)
+  (require 'cb-use-package-extensions)
+  (require 'use-package))
 
 (defconst cb-project-packages
   '(skeletor
@@ -18,6 +21,9 @@
     neotree
     (cb-project-show-project :location local)))
 
+(defun cb-project/regexp-quoted-ignored-dirs ()
+  (--map (format "/%s/" (regexp-quote it)) cb-vars-ignored-dirs))
+
 (defun cb-project/user-config ()
   (setq projectile-completion-system 'helm)
   (with-eval-after-load 'projectile
@@ -26,18 +32,24 @@
 (defun cb-project/post-init-recentf ()
   (use-package recentf
     :config
-    (setq recentf-exclude (-union recentf-exclude (cb-core-regexp-quoted-ignored-dirs)))))
+    (setq recentf-exclude (-union recentf-exclude (cb-project/regexp-quoted-ignored-dirs)))))
 
 (defun cb-project/post-init-projectile ()
   (use-package projectile
     :bind
     (("s-f" . projectile-find-file)
      ("s-d" . projectile-find-dir)
-     ("s-l" . projectile-switch-project))
+     ("s-l" . spacemacs/helm-persp-switch-project))
+    :leader-bind
+    (("pa" . cb-projectile-toggle-between-implementation-and-test)
+     ("pt" . projectile-test-project))
     :config
     (progn
-      ;;; Define a command that switches between test and impl, optionally in
-      ;;; another window.
+      (setq projectile-enable-caching t)
+      (setq projectile-switch-project-action #'magit-status)
+
+      ;; Define a command that switches between test and impl, optionally in
+      ;; another window.
 
       (defun cb-projectile-toggle-between-implementation-and-test (&optional arg)
         "Toggle between an implementation file and its test file."
@@ -46,9 +58,6 @@
           (if arg
               (find-file-other-window file)
             (find-file file))))
-
-      (spacemacs/set-leader-keys "pa" #'cb-projectile-toggle-between-implementation-and-test)
-      (spacemacs/set-leader-keys "pt" #'projectile-test-project)
 
       ;;; Vars
 
@@ -92,20 +101,35 @@
 (defun cb-project/post-init-helm-projectile ()
   (use-package helm-projectile
     :after projectile
-    :bind
-    (("s-t" . helm-projectile))))
+    :bind (("s-t" . helm-projectile))
+    :leader-bind (("oo" . helm-occur))))
 
 (defun cb-project/post-init-ag ()
   (use-package ag
     :after projectile
     :config
-    (setq ag-ignore-list (-union ag-ignore-list (cb-core-regexp-quoted-ignored-dirs)))))
+    (setq ag-ignore-list
+          (->> (list
+                ag-ignore-list
+                cb-vars-ignored-files-regexps
+                (cb-project/regexp-quoted-ignored-dirs))
+               -flatten
+               -uniq))))
 
 (defun cb-project/post-init-helm-ag ()
   (use-package helm-ag
     :after projectile
     :config
-    (setq helm-ag-insert-at-point 'symbol)))
+    (progn
+      (setq helm-ag-ignore-patterns
+            (->> (list
+                  helm-ag-ignore-patterns
+                  cb-vars-ignored-files-regexps
+                  (cb-project/regexp-quoted-ignored-dirs))
+                 -flatten
+                 -uniq))
+
+      (setq helm-ag-insert-at-point 'symbol))))
 
 (defun cb-project/init-skeletor ()
   (use-package skeletor
@@ -175,12 +199,13 @@
     :defer t
     :config
     (progn
-      (core/remap-face 'neo-dir-link-face 'default)
-      (set-face-foreground neo-file-link-face solarized-hl-orange)
-      (set-face-foreground neo-root-dir-face solarized-hl-blue))))
+      (cb-remap-face 'neo-dir-link-face 'default)
+      (set-face-foreground neo-file-link-face cb-vars-solarized-hl-orange)
+      (set-face-foreground neo-root-dir-face cb-vars-solarized-hl-blue))))
 
 (defun cb-project/init-cb-project-show-project ()
   (use-package cb-project-show-project
+    :disabled t
     :after projectile
     :config (cb-project-show-project-init)))
 

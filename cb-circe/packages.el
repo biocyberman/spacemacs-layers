@@ -71,10 +71,10 @@ Each entry is either:
     :config
     (progn
       (set-face-background 'circe-prompt-face nil)
-      (set-face-foreground 'circe-prompt-face solarized-hl-magenta)
+      (set-face-foreground 'circe-prompt-face cb-vars-solarized-hl-magenta)
 
       (defface cb-circe-self-say-face
-        `((t (:weight bold :foreground ,solarized-hl-blue)))
+        `((t (:weight bold :foreground ,cb-vars-solarized-hl-blue)))
         "The face for the Circe prompt.")
 
       (setq circe-reduce-lurker-spam t)
@@ -159,11 +159,11 @@ Each entry is either:
 (defun cb-circe/init-circe-show-channels ()
   (use-package circe-show-channels
     :after circe
-    :commands circe-show-channels
+    :bind
+    (:map
+     circe-mode-map
+     ("C-c C-s" . circe-show-channels))
     :config
-    (progn
-      (setq circe-show-channels-priority '(("#haskell" . 1)))
-      (with-eval-after-load 'circe
-        (define-key circe-mode-map (kbd "C-c C-s") #'circe-show-channels)))))
+    (setq circe-show-channels-priority '(("#haskell" . 1)))))
 
 ;;; packages.el ends here
