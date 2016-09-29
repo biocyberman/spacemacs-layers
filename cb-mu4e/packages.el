@@ -9,48 +9,8 @@
   (require 'spaceline nil t))
 
 (defconst cb-mu4e-packages
-  '(async
-    (mu4e :location local)
+  '((mu4e :location local)
     (mu4e-unread-messages :location local)))
-
-(defun cb-mu4e/init-async ()
-  ;; Send mail asynchronously.
-  (use-package async
-    :init
-    (setq sendmail-program "msmtp")
-    :config
-    (progn
-      (require 'smtpmail-async)
-
-      ;; Tweaks to smtpmail-async so that I can inject msmtp as the sendmail
-      ;; program.
-      (defun cb-async-smtpmail-send-it ()
-        (let ((to          (message-field-value "To"))
-              (buf-content (buffer-substring-no-properties (point-min) (point-max))))
-          (message "Delivering message to %s..." to)
-          (async-start
-           `(lambda ()
-              (require 'smtpmail)
-              (condition-case err
-                  (with-temp-buffer
-                    (insert ,buf-content)
-                    (set-buffer-multibyte nil)
-                    ;; Pass in the variable environment for smtpmail
-                    ,(async-inject-variables
-                      "\\`\\(smtpmail\\|sendmail\\|async-smtpmail\\|\\(user-\\)?mail\\)-\\|auth-sources"
-                      nil "\\`\\(mail-header-format-function\\|smtpmail-address-buffer\\|mail-mode-abbrev-table\\)")
-                    (run-hooks 'async-smtpmail-before-send-hook)
-                    (smtpmail-send-it)
-                    (cons t nil))
-                (error
-                 (cons nil err))))
-           `(-lambda ((success? . err))
-              (if success?
-                  (message "Delivering message to %s...done" ,to)
-                (message "Delivering message to %s...FAILED. Error: %s" ,to err))))))
-
-      (setq send-mail-function #'cb-async-smtpmail-send-it)
-      (setq message-send-mail-function #'cb-async-smtpmail-send-it))))
 
 (defun cb-mu4e/init-mu4e ()
   (use-package org-mu4e
@@ -92,12 +52,15 @@
       (setq mu4e-headers-unread-mark (purecopy '("u" . "●")))
       (setq mu4e-hide-index-messages t)
 
+      (setq mu4e-view-prefer-html t)
       (setq mu4e-view-show-images t)
       (setq mu4e-view-show-addresses t)
       (setq message-kill-buffer-on-exit t)
       (setq mu4e-compose-signature-auto-include t)
 
-      (setq mu4e-get-mail-command "mbsync -a -q")
+      ;; All my mailservers use IMAP. Use mbsync to synchronise mail between the
+      ;; server and my local machine.
+      (setq mu4e-get-mail-command "mbsync -V -q -a")
       (setq mu4e-change-filenames-when-moving t)
 
       (setq smtpmail-queue-mail nil)
@@ -116,8 +79,9 @@
       ;; Update every 5 minutes.
       (setq mu4e-update-interval (* 60 5))
 
-      ;; Disable autofill in compose buffers
+      ;; Use word wrap instead of auto-fill.
       (add-hook 'mu4e-compose-mode-hook #'turn-off-auto-fill)
+      (add-hook 'mu4e-compose-mode-hook (lambda () (setq word-wrap t)))
 
       ;; use imagemagick, if available
       (when (fboundp 'imagemagick-register-types)

@@ -39,6 +39,7 @@
 
 (defun cb-rust/post-init-rust-mode ()
   (use-package rust-mode
+    :defer t
     :init
     (defun cb-rust/join-line ()
       "Join lines, deleting intermediate spaces for chained function calls."
@@ -212,9 +213,11 @@
                  (lambda (&rest _)
                    (when (funcall inserting-type? (point))
                      (just-one-space)
+                     (skip-chars-backward " =")
+                     (just-one-space)
                      (save-excursion
                        (insert " ")
-                       (search-backward ":&")
+                       (skip-chars-backward " :")
                        (delete-horizontal-space))))))
 
     (smart-ops-default-ops)))
@@ -243,11 +246,19 @@
         (skeletor-shell-command "git add -A && git commit -m 'Add initial files'" dir)))))
 
 (defun cb-rust/post-init-smartparens ()
-  (with-eval-after-load 'smartparens
-    (sp-with-modes 'rust-mode
-      (sp-local-pair "{" "}" :post-handlers '(:add sp-internal-and-external-padding))
-      (sp-local-pair "'" "'" :actions '(:rem insert))
-      (sp-local-pair "<" ">" :actions '(:rem insert)))))
+  (use-package smartparens
+    :config
+    (progn
+      ;; HACK: There seems to be a race condition setting up SP pairs in
+      ;; rust-mode :/
+
+      (defun cb-rust--configure-sp ()
+        (sp-with-modes 'rust-mode
+          (sp-local-pair "{" "}" :post-handlers '(:add sp-internal-and-external-padding))
+          (sp-local-pair "'" "'" :actions '(:rem insert))
+          (sp-local-pair "<" ">" :actions '(:rem insert))))
+
+      (add-hook 'rust-mode-hook #'cb-rust--configure-sp))))
 
 (defun cb-rust/post-init-aggressive-indent ()
   (use-package aggressive-indent

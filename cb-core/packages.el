@@ -31,9 +31,12 @@
     recentf
     neotree
     time
+    persp-mode
     (compile :location built-in)
+    (tramp :location built-in)
 
     (cb-buffers :location local)
+    (cb-subr-x :location local)
     (locate-key-binding :location local)
     (smart-ops :location local)
     (case :location local)
@@ -52,7 +55,9 @@
     (cb-exit-emacs :location local)
     (cb-generate-password :location local)
     (cb-font-lock-replace-match :location local)
-    (cb-remap-face :location local)))
+    (cb-remap-face :location local)
+    (cb-ligatures :location local)
+    (cb-helm-emoticons :location local)))
 
 (defun cb-core/user-config ()
   "This procedure should be called in `dotspacemacs/user-config'."
@@ -62,6 +67,9 @@
 (defun cb-core/init-dash-functional ()
   (use-package dash-functional
     :config (require 'dash-functional)))
+
+(defun cb-core/init-cb-subr-x ()
+  (use-package cb-subr-x))
 
 (defun cb-core/post-init-diminish ()
   (diminish 'auto-fill-function " ≣"))
@@ -75,9 +83,8 @@
 (defun cb-core/post-init-helm ()
   (use-package helm
     :bind
-    (("C-SPC" . helm-for-files)
-     ("C-@" . helm-for-files)
-     :map helm-map
+    (:map
+     helm-map
      ("<tab>" . helm-execute-persistent-action)
      ("C-i" . helm-execute-persistent-action)
      ("C-z" . helm-select-action)
@@ -118,6 +125,12 @@
         (add-to-list 'aggressive-indent-excluded-modes 'restclient-mode)
         (global-aggressive-indent-mode)))))
 
+(defun cb-core/post-init-persp-mode ()
+  (use-package persp-mode
+    :defer t
+    :config
+    (bind-key "C-SPC" #'spacemacs/persp-helm-mini)))
+
 (defun cb-core/init-ag ()
   (use-package ag :commands ag))
 
@@ -129,7 +142,19 @@
   (use-package alert
     :defer t
     :config
-    (setq alert-default-style 'message)))
+    (progn
+      ;; HACK: Fix broken OSX implementation.
+      (defun alert-osx-notifier-notify (info)
+        (call-process "osascript" nil nil nil
+                      "-e"
+                      (format "display notification %S with title %S"
+                              (alert-encode-string (plist-get info :message))
+                              (alert-encode-string (plist-get info :title))))
+        (alert-message-notify info))
+
+      (if (eq system-type 'darwin)
+          (setq alert-default-style 'osx-notifier)
+        (setq alert-default-style 'libnotify)))))
 
 (defun cb-core/post-init-helm-gtags ()
   (use-package helm-gtags
@@ -162,14 +187,9 @@
 
 (defun cb-core/init-world-time-mode ()
   (use-package world-time-mode
-    :commands world-time-list
     :evil-bind
-    (:map
-     world-time-table-mode-map
-     :state normal
-     ("q" . quit-window))
-    :leader-bind
-    (("at" . world-time-list))
+    (:map world-time-table-mode-map :state normal ("q" . quit-window))
+    :leader-bind (("at" . world-time-list))
     :config
     (progn
       (setq display-time-world-list '(("Pacific/Auckland" "NZT")
@@ -254,7 +274,17 @@
 (defun cb-core/post-init-neotree ()
   (use-package neotree
     :config
-    (setq neo-theme 'arrow)))
+    (progn
+      (setq neo-theme 'arrow)
+
+      ;; HACK: prevent neotree from moving cursor after hitting <RET>.
+
+      (defun cb-core--restoring-pos (f &rest args)
+        (let ((p (point)))
+          (apply f args)
+          (goto-char p)))
+
+      (advice-add #'neotree-enter :around #'cb-core--restoring-pos))))
 
 (defun cb-core/init-create-layer-local-package ()
   (use-package create-layer-local-package
@@ -354,5 +384,24 @@
       (advice-add #'spacemacs//ido-navigation-ms-on-exit :after #'cb-remap-face-restore)
       (advice-add #'spacemacs//ido-setup :after #'cb-remap-face-restore)
       (advice-add #'spacemacs//helm-before-initialize :after #'cb-remap-face-restore))))
+
+(defun cb-core/init-cb-ligatures ()
+  (use-package cb-ligatures
+    :config
+    (progn
+      (cb-ligatures-init)
+      (global-prettify-symbols-mode +1)
+      (add-hook 'text-mode-hook #'prettify-symbols-mode)
+      (add-hook 'prog-mode-hook #'prettify-symbols-mode))))
+
+(defun cb-core/init-tramp ()
+  (use-package tramp
+    :defer t
+    :config
+    (setq vc-ignore-dir-regexp (format "\\(%s\\)\\|\\(%s\\)" vc-ignore-dir-regexp tramp-file-name-regexp))))
+
+(defun cb-core/init-cb-helm-emoticons ()
+  (use-package cb-helm-emoticons
+    :commands cb-helm-emoticons))
 
 ;;; packages.el ends here

@@ -36,34 +36,9 @@
 (defconst cb-circe-packages
   '(circe
     persp-mode
-    (circe-notifications :location local)
-    (circe-show-channels :location local))
-  "The list of Lisp packages required by the cb-circe layer.
-
-Each entry is either:
-
-1. A symbol, which is interpreted as a package to be installed, or
-
-2. A list of the form (PACKAGE KEYS...), where PACKAGE is the
-    name of the package to be installed or loaded, and KEYS are
-    any number of keyword-value-pairs.
-
-    The following keys are accepted:
-
-    - :excluded (t or nil): Prevent the package from being loaded
-      if value is non-nil
-
-    - :location: Specify a custom installation location.
-      The following values are legal:
-
-      - The symbol `elpa' (default) means PACKAGE will be
-        installed using the Emacs package manager.
-
-      - The symbol `local' directs spacemacs to load the file at
-        `./local/PACKAGE/PACKAGE.el'
-
-      - A list beginning with the symbol `recipe' is a melpa
-        recipe.  See: https://github.com/milkypostman/melpa#recipe-format")
+    circe-notifications
+    helm
+    (circe-show-channels :location local)))
 
 (defun cb-circe/init-circe ()
   (use-package circe
@@ -78,6 +53,7 @@ Each entry is either:
         "The face for the Circe prompt.")
 
       (setq circe-reduce-lurker-spam t)
+      (setq circe-use-cycle-completion t)
       (setq circe-active-users-timeout (* 60 30)) ; 30 minutes
       (setq circe-format-say "{nick}> {body}")
       (setq circe-format-self-say (concat (propertize ">>>" 'face 'cb-circe-self-say-face) " {body}"))
@@ -128,6 +104,13 @@ Each entry is either:
     :init
     (add-hook 'circe-channel-mode-hook #'enable-lui-autopaste)))
 
+(defun cb-circe/post-init-helm ()
+  (use-package helm
+    :defer t
+    :config
+    (dolist (mode '(circe-channel-mode circe-query-mode circe-server-mode))
+      (add-to-list 'helm-mode-no-completion-in-region-in-modes mode))))
+
 (defun cb-circe/init-circe-notifications ()
   (use-package circe-notifications
     :commands enable-circe-notifications
@@ -135,7 +118,17 @@ Each entry is either:
     :init
     (add-hook 'circe-server-connected-hook #'enable-circe-notifications)
     :config
-    (setq circe-notifications-backend "terminal-notifier")))
+    (progn
+      ;;; HACK: Fix broken implementation of internal function.
+
+      (defun circe-notifications-nicks-on-all-networks ()
+        "Get a list of all nicks in use according to `circe-network-options'."
+        (delete-dups (mapcar (lambda (opt)
+                               (plist-get (cdr opt) :nick))
+                             circe-network-options)))
+
+      (when (eq system-type 'darwin)
+        (setq circe-notifications-alert-style 'osx-notifier)))))
 
 (defun cb-circe/post-init-persp-mode ()
   (defun cb-circe/maybe-refresh-layout ()

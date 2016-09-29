@@ -33,10 +33,10 @@
     (haskell-autoinsert :location local)
     (cb-haskell-alignment :location local)
     (haskell-flycheck-holes :location local)
-    (cb-hasklig :location local)
     (cb-haskell-meta-ret :location local)
     (cb-haskell-smart-ops :location local)
-    (cb-haskell-ctrl-c-ctrl-c :location local)))
+    (cb-haskell-ctrl-c-ctrl-c :location local)
+    (cb-stack-hoogle :location local)))
 
 (defun cb-haskell/init-haskell-mode ()
   (use-package haskell-mode
@@ -50,8 +50,7 @@
      ("C-," . haskell-move-nested-left)
      ("C-." . haskell-move-nested-right)
      ("C-c C-d" . haskell-w3m-open-haddock)
-     ("C-c C-f" . haskell-cabal-visit-file)
-     ("C-c C-h" . haskell-hoogle))
+     ("C-c C-f" . haskell-cabal-visit-file))
 
     :evil-bind
     (:map
@@ -81,12 +80,6 @@
         (setq tab-width 4))
 
       (add-hook 'haskell-mode-hook #'cb-haskell/set-indentation-step)
-
-      ;; Make 3rd-party tools aware of common syntax extensions.
-
-      (setq haskell-language-extensions
-            '("-XUnicodeSyntax" "-XLambdaCase" "-XRankNTypes"))
-
 
       ;; Ignore generated files.
 
@@ -124,7 +117,12 @@
 (defun cb-haskell/init-intero ()
   (use-package intero
     :init
-    (add-hook 'haskell-mode-hook #'intero-mode)
+    (progn
+      (defun cb-haskell/maybe-intero-mode ()
+        (unless (or (derived-mode-p 'ghc-core-mode)
+                    (equal (get major-mode 'mode-class) 'special))
+          (intero-mode +1)))
+      (add-hook 'haskell-mode-hook #'cb-haskell/maybe-intero-mode))
 
     :bind
     (:map
@@ -159,10 +157,17 @@
 
 (defun cb-haskell/init-ghc-dump ()
   (use-package ghc-dump
+    :after haskell-mode
+    :leader-bind (:mode haskell-mode ("d" . ghc-dump-popup))
+    :bind (:map ghc-dump-popup-mode-map ("q" . quit-window))
     :config
-    (progn
-      (spacemacs/set-leader-keys-for-major-mode 'haskell-mode "D" #'ghc-dump-popup)
-      (bind-key "q" #'cb-buffers-maybe-kill ghc-dump-popup-mode-map))))
+    (with-eval-after-load 'aggressive-indent
+      (add-to-list 'aggressive-indent-excluded-modes 'asm-mode)
+      (add-to-list 'aggressive-indent-excluded-modes 'llvm-mode)
+      (add-to-list 'aggressive-indent-excluded-modes 'ghc-core-mode)
+      (add-to-list 'aggressive-indent-excluded-modes 'ghc-type-dump-mode)
+      (add-to-list 'aggressive-indent-excluded-modes 'ghc-stg-mode)
+      (add-to-list 'aggressive-indent-excluded-modes 'ghc-cmm-mode))))
 
 (defun cb-haskell/init-haskell-flyspell ()
   (use-package haskell-flyspell
@@ -171,18 +176,17 @@
 
 (defun cb-haskell/init-haskell-ghc-opts ()
   (use-package haskell-ghc-opts
-    :functions (haskell-ghc-opts-init)
-    :init (add-hook 'haskell-mode-hook #'haskell-ghc-opts-init)))
+    :leader-bind (:mode haskell-mode ("io" . haskell-ghc-opts-insert))))
 
 (defun cb-haskell/init-haskell-imports ()
   (use-package haskell-imports
-    :functions (haskell-imports-init)
-    :init (add-hook 'haskell-mode-hook #'haskell-imports-init)))
+    :leader-bind (:mode haskell-mode
+                        ("ii" . haskell-imports-insert-unqualified)
+                        ("iq" . haskell-imports-insert-qualified))))
 
 (defun cb-haskell/init-haskell-pragmas ()
   (use-package haskell-pragmas
-    :functions (haskell-pragmas-init)
-    :init (add-hook 'haskell-mode-hook #'haskell-pragmas-init)))
+    :leader-bind (:mode haskell-mode ("il" . haskell-pragmas-insert))))
 
 (defun cb-haskell/init-haskell-autoinsert ()
   (use-package haskell-autoinsert
@@ -206,11 +210,6 @@
     :config
     (add-hook 'haskell-mode-hook #'haskell-flycheck-holes-init)))
 
-(defun cb-haskell/init-cb-hasklig ()
-  (use-package cb-hasklig
-    :after haskell-mode
-    :config (cb-hasklig-init)))
-
 (defun cb-haskell/init-cb-haskell-meta-ret ()
   (use-package cb-haskell-meta-ret
     :after haskell-mode
@@ -225,5 +224,13 @@
   (use-package cb-haskell-ctrl-c-ctrl-c
     :after haskell-mode
     :bind (:map haskell-mode-map ("C-c C-c" . cb-haskell-ctrl-c-ctrl-c))))
+
+(defun cb-haskell/init-cb-stack-hoogle ()
+  (use-package cb-stack-hoogle
+    :after haskell-mode
+    :bind
+    (:map haskell-mode-map ("C-c C-h" . cb-stack-hoogle))
+    :evil-bind
+    (:map haskell-mode-map :state normal ("RET" . cb-stack-hoogle-info-at-pt))))
 
 ;;; packages.el ends here

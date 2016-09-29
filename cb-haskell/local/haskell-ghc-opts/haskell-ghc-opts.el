@@ -25,9 +25,6 @@
 (require 'haskell-mode)
 (require 's)
 
-(autoload 'cb-buffers-current-line "cb-buffers")
-(autoload 'evil-define-key "evil-core")
-
 (defconst haskell-ghc-opts
   '("-fcase-merge"
     "-fcse"
@@ -118,18 +115,17 @@
        (-flatten)
        (--mapcat (s-split (rx (* space) "," (* space)) it))))
 
-;;;###autoload
 (defun haskell-ghc-opts--goto-buffer-start ()
   (goto-char (point-min))
 
   ;; Skip #! line
-  (when (and (s-matches? (rx bol "#!") (cb-buffers-current-line))
+  (when (and (s-matches? (rx bol "#!") (buffer-substring (line-beginning-position) (line-end-position)))
              (search-forward "#!" nil t))
     (goto-char (line-end-position))
     (forward-char 1))
 
   (while (and (not (eobp))
-              (s-blank? (cb-buffers-current-line)))
+              (s-blank? (buffer-substring (line-beginning-position) (line-end-position))))
     (forward-line 1)))
 
 (defun haskell-ghc-opts-set (opts)
@@ -144,9 +140,10 @@
     (haskell-ghc-opts--goto-buffer-start)
     (while (search-forward-regexp haskell-ghc-opts--regex nil t)
       (replace-match "")
-      (when (s-blank? (cb-buffers-current-line))
+      (when (s-blank? (buffer-substring (line-beginning-position) (line-end-position)))
         (join-line)))))
 
+;;;###autoload
 (defun haskell-ghc-opts-insert (opt)
   "Insert OPT into the GHC options list for the current file."
   (interactive (list (completing-read "GHC Option: " haskell-ghc-opts nil t)))
@@ -154,10 +151,6 @@
     (if (--any? (s-matches? opt it) cur-opts)
         (user-error "Option %s already set" opt)
       (haskell-ghc-opts-set (cons opt cur-opts)))))
-
-;;;###autoload
-(defun haskell-ghc-opts-init ()
-  (evil-define-key 'normal haskell-mode-map (kbd "SPC i o") #'haskell-ghc-opts-insert))
 
 (provide 'haskell-ghc-opts)
 
