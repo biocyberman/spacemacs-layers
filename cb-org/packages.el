@@ -77,6 +77,8 @@
     :config
     (progn
       (setq org-default-notes-file (f-join (cb-org-directory) "notes.org"))
+      (setq org-my-todo-file (f-join (cb-org-directory) "todo.org"))
+      (setq org-my-habit-file (f-join (cb-org-directory) "habit.org"))
 
       (defun cb-org/fold-all ()
         (interactive)
@@ -264,7 +266,7 @@ Do not scheduled items or repeating todos."
   (add-hook 'org-ctrl-c-ctrl-c-hook #'cb-org/latex-preview-fragment-at-pt t)
 
   (use-package org-agenda
-    :after org
+    :after (org cb-org-directory)
     :bind (:map org-agenda-mode-map ("J" . org-agenda-goto-date))
     :config
     (progn
@@ -632,7 +634,34 @@ table tr.tr-even td {
 
              (cb-org/capture-template-entry
               "E" "Email task (work)"
-              `(file (cb-org-work-file)) "* TODO %?\n%a")))))
+              `(file (cb-org-work-file)) "* TODO %?\n%a")
+
+             (cb-org/capture-template-entry
+              "g" "Meeting"
+              '(file org-my-todo-file)
+              "* MEETING with %? :MEETING:\n%U"
+              )
+
+             (cb-org/capture-template-entry
+              "h" "Habit activities, leizure"
+              '(file org-my-habit-file) "* NEXT %?\n%U\n%a\nSCHEDULED: %(format-time-string \"%<<%Y-%m-%d %a .+1d/3d>>\")\n:PROPERTIES:\n:STYLE: habit\n:REPEAT_TO_STATE: NEXT\n:END:\n")
+
+             (cb-org/capture-template-entry
+              "o" "note"
+              '(file+olp org-default-notes-file "Notes") "* %? :NOTE:\n%U\n%a\n"
+              )
+
+             (cb-org/capture-template-entry
+              "p" "Phone call"
+              '(file org-my-todo-file) "* PHONE %? :PHONE:\n%U"
+              )
+
+             (cb-org/capture-template-entry
+              "x" "Bioinformatics"
+              '(file+olp (f-join (cb-org-directory) "bioinformatics" "bioinformatics.org") "Notes")
+              "* TODO Review %c\n%U\n"
+              )
+             ))))
 
   (use-package org-download
     :after org
