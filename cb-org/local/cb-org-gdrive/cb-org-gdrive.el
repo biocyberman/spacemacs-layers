@@ -173,7 +173,7 @@ Return a plist with the following keys:
     (cb-org-gdrive--run-exporter cont subtreep visible-only ext-plist)))
 
 (org-export-define-derived-backend 'gdrive 'odt
-  :export-block '("GDRIVE" "GOOGLE DRIVE")
+  ;; :export-block '("GDRIVE" "GOOGLE DRIVE")
   :menu-entry
   '(?d "Import to Google Drive"
        ((?d "Import" cb-org-gdrive--export-to-odt-and-import)
