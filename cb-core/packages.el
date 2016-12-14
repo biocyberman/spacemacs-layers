@@ -15,10 +15,10 @@
 (defconst cb-core-packages
   '(dash-functional
     diminish
-    auto-revert
+    ;; auto-revert
     hideshow
     helm
-    aggressive-indent
+    ;; aggressive-indent
     ag
     wgrep-ag
     alert
